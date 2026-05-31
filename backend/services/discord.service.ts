@@ -5,6 +5,7 @@ import { LLMService, LLMMessage } from './llm.service';
 import { RAGService } from './rag.service';
 import { OrchestratorService } from './orchestrator.service';
 import { Dharma } from '../models';
+import { ContextService } from './context.service';
 
 export interface DiscordAction {
   action: string;
@@ -61,6 +62,7 @@ export class DiscordService {
     ['COMPLETE_TASK', async (p) => DiscordService.execCompleteTask(p.missionId, p.subTaskId)],
     ['SYNC_BRAIN', async (p, ctx) => DiscordService.execSyncBrain(ctx.userId, ctx.username)],
     ['BRAHMA_CHAT', async (p, ctx) => DiscordService.execBrahmaChat(ctx.prompt, ctx.userId)],
+    ['CREATE_SKILL', async (p) => DiscordService.execCreateSkillAction(p.name, p.description, p.category, p.paramSpec, p.triggers)],
   ]);
 
   public static loadSkillsFromDisk(): void {
@@ -179,6 +181,8 @@ export class DiscordService {
             const hasPrefix = message.content.startsWith('!brahma');
             const isMentioned = message.mentions.has(this.client!.user!);
 
+            if (!hasPrefix && !isMentioned) return;
+
             if (hasPrefix) {
               cleanPrompt = message.content.slice(7).trim();
             } else if (isMentioned) {
@@ -190,7 +194,31 @@ export class DiscordService {
             try {
               await message.channel.sendTyping();
               const response = await this.handleUserCommand(cleanPrompt, message.author.id, message.author.username, message.guildId || 'dm');
-              await message.reply(response);
+              
+              let targetChannel = message.channel;
+              const preferredChannelName = DiscordService.getPreferredChannelFromMatrix();
+              if (preferredChannelName && message.guild) {
+                const isSummaryOrSync = response.includes('Session Memory Log') || 
+                                        response.includes('Brahma Long-Term Memory Synced!') ||
+                                        cleanPrompt.toLowerCase().includes('sync') ||
+                                        cleanPrompt.toLowerCase().includes('summarize');
+                if (isSummaryOrSync) {
+                  const cleanPref = preferredChannelName.toLowerCase().replace(/\s+/g, '-');
+                  const routedChannel = message.guild.channels.cache.find(
+                    (c) => c.name.toLowerCase() === cleanPref ||
+                           c.name.toLowerCase().replace(/-/g, ' ') === preferredChannelName.toLowerCase()
+                  );
+                  if (routedChannel && routedChannel.type === ChannelType.GuildText) {
+                    targetChannel = routedChannel as any;
+                  }
+                }
+              }
+
+              if (targetChannel.id === message.channel.id) {
+                await message.reply(response);
+              } else {
+                await (targetChannel as any).send(`<@${message.author.id}>, here is the response to your request:\n\n${response}`);
+              }
             } catch (err: any) {
               await message.reply(`❌ Error executing instruction: ${err.message}`);
             }
@@ -273,6 +301,7 @@ Respond in STRICT JSON conforming to the schema:
 }
 
 ### Intent Decision Rules:
+- Match "CREATE_SKILL" when user wants to create a new skill, capability, or feature. Params: name (string), description (string), category (string, default "Custom"), paramSpec (string, default '{"input":"string"}'), triggers (string, comma-separated keywords).
 - Match "SYNC_BRAIN" when user wants to save details long term, sync brain, or archive history to disk.
 - Match "LIST_CHANNELS" when user asks to see what channels are in the server.
 - Match "LIST_ROLES" when user wants to view server roles.
@@ -293,7 +322,8 @@ ${skillList}`
     try {
       actionResponse = await LLMService.queryStructured<DiscordAction>(messages);
     } catch (err: any) {
-      return `❌ Could not parse instruction intent: ${err.message}`;
+      console.warn('⚠️ Structured parser failed, falling back to BRAHMA_CHAT:', err.message);
+      actionResponse = { action: 'BRAHMA_CHAT', params: { message: prompt } };
     }
 
     console.log(`🧠 Decoded Action: ${actionResponse.action}`, actionResponse.params);
@@ -474,20 +504,63 @@ ${skillList}`
     if (this.client?.readyAt) {
       const guild = this.client.guilds.cache.first();
       if (!guild) throw new Error('No active Guild loaded.');
-      const channel = guild.channels.cache.find((c) => c.id === channelNameOrId || c.name.toLowerCase() === channelNameOrId.toLowerCase());
-      if (!channel || channel.type !== ChannelType.GuildText) throw new Error(`Text channel "${channelNameOrId}" not found.`);
+      
+      let channel = guild.channels.cache.find(
+        (c) => c.id === channelNameOrId || 
+               c.name.toLowerCase() === channelNameOrId.toLowerCase() ||
+               c.name.toLowerCase().replace(/-/g, '') === channelNameOrId.toLowerCase().replace(/-/g, '')
+      );
+
+      let wasCreated = false;
+      if (!channel) {
+        console.log(`📢 Text channel "${channelNameOrId}" not found. Creating it dynamically...`);
+        const cleanName = channelNameOrId.toLowerCase().replace(/\s+/g, '-');
+        channel = await guild.channels.create({
+          name: cleanName,
+          type: ChannelType.GuildText,
+        }) as any;
+        wasCreated = true;
+      }
+
+      if (!channel) {
+        throw new Error(`Failed to find or create channel "${channelNameOrId}".`);
+      }
+
+      if (channel.type !== ChannelType.GuildText) {
+        throw new Error(`Channel "${channelNameOrId}" exists but is not a text channel.`);
+      }
+
       await (channel as any).send(content);
-      return `✉️ **Live Action Executed**: Sent message to <#${channel.id}>: "${content}"`;
+      return wasCreated
+        ? `✉️ **Live Action Executed**: Created missing text channel <#${channel.id}> and sent message: "${content}"`
+        : `✉️ **Live Action Executed**: Sent message to <#${channel.id}>: "${content}"`;
     } else {
-      const channel = this.mockState.channels.find((c) => c.id === channelNameOrId || c.name.toLowerCase() === channelNameOrId.toLowerCase());
-      if (!channel) throw new Error(`Channel "${channelNameOrId}" not found.`);
+      let channel = this.mockState.channels.find(
+        (c) => c.id === channelNameOrId || 
+               c.name.toLowerCase() === channelNameOrId.toLowerCase() ||
+               c.name.toLowerCase().replace(/-/g, '') === channelNameOrId.toLowerCase().replace(/-/g, '')
+      );
+
+      let wasCreated = false;
+      if (!channel) {
+        const mockId = `c-${Date.now().toString().slice(-4)}`;
+        const cleanName = channelNameOrId.toLowerCase().replace(/\s+/g, '-');
+        const newChan = { id: mockId, name: cleanName, type: 'text' };
+        this.mockState.channels.push(newChan);
+        channel = newChan;
+        wasCreated = true;
+      }
+
       this.mockState.messages.push({
         channelId: channel.id,
         author: 'BrahmaBot',
         content,
         timestamp: new Date(),
       });
-      return `✉️ **Mock Action Executed**: Sent message to \`#${channel.name}\`: "${content}"`;
+
+      return wasCreated
+        ? `✉️ **Mock Action Executed**: Created missing text channel \`#${channel.name}\` dynamically and sent message: "${content}"`
+        : `✉️ **Mock Action Executed**: Sent message to \`#${channel.name}\`: "${content}"`;
     }
   }
 
@@ -688,6 +761,7 @@ Generate ONLY the valid markdown content — do not wrap in additional markdown 
         );
         fs.writeFileSync(zehnPath, zehnContent, 'utf-8');
         console.log(`Zehn.md session log inserted.`);
+        ContextService.syncEntitiesInZehn(brainDir, username);
       }
     }
 
@@ -710,6 +784,13 @@ Generate ONLY the valid markdown content — do not wrap in additional markdown 
     userMessage: string,
     assistantReply: string
   ): Promise<void> {
+    const cleanMsg = userMessage.trim().toLowerCase();
+    const casualGreetings = ['hello', 'hey', 'hi', 'yo', 'sup', 'howdy', 'test', 'status', 'ping', 'pong', 'ok', 'okay'];
+    if (cleanMsg.length < 12 || casualGreetings.includes(cleanMsg)) {
+      console.log('🧠 [Reflection Engine] Message too short or casual. Skipping reflection.');
+      return;
+    }
+
     console.log(`🧠 [Reflection Engine] Analyzing conversational turn for user: ${userId}`);
 
     // Query LLM to evaluate if we should sync/reflect
@@ -758,6 +839,35 @@ Respond in STRICT JSON conforming to the schema:
       const atmanPath = path.join(brainDir, 'Atman.md');
       if (fs.existsSync(atmanPath)) {
         let content = fs.readFileSync(atmanPath, 'utf-8');
+
+        // Deduplication check: skip if this preference or key details already exist in Atman matrix
+        const lowerObserved = decision.observedPreference.toLowerCase();
+        const lowerAdapt = decision.adaptationRequired.toLowerCase();
+        let isDuplicate = false;
+        const matrixLines = content.split('\n');
+        for (const line of matrixLines) {
+          if (line.includes('U-PREF-')) {
+            const parts = line.split('|');
+            if (parts.length >= 4) {
+              const existingObs = parts[2].trim().toLowerCase();
+              const existingAdapt = parts[3].trim().toLowerCase();
+              if (
+                existingObs.includes(lowerObserved) ||
+                lowerObserved.includes(existingObs) ||
+                (existingObs.includes('yuvraj') && lowerObserved.includes('yuvraj')) ||
+                (existingObs.includes('email summaries') && lowerObserved.includes('email summaries'))
+              ) {
+                isDuplicate = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (isDuplicate) {
+          console.log('🧠 [Reflection Engine] Preference already captured in Atman.md. Skipping duplicate update.');
+          return;
+        }
 
         // Extract current version
         const versionMatch = content.match(/version: (\d+\.\d+\.\d+)/);
@@ -896,6 +1006,54 @@ Respond in STRICT JSON conforming to the schema:
         ...members,
       ].join('\n');
     }
+  }
+
+  private static getPreferredChannelFromMatrix(): string | null {
+    try {
+      const atmanContext = this.getAtmanContext();
+      const lines = atmanContext.split('\n');
+      for (const line of lines) {
+        if (line.includes('U-PREF-')) {
+          const match = line.match(/(?:in the|to the)\s+([a-zA-Z0-9\s-_]+)\s+channel/i);
+          if (match && match[1]) {
+            return match[1].trim();
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn('⚠️ Failed to extract preferred channel from matrix:', err.message);
+    }
+    return null;
+  }
+
+  private static async execCreateSkillAction(
+    name: string,
+    description: string,
+    category: string = 'Custom',
+    paramSpec: string = '{"input":"string"}',
+    triggers: string = 'create, skill'
+  ): Promise<string> {
+    const brainDir = path.join(__dirname, '../Brahma [Brain]');
+    const result = ContextService.execCreateSkill(
+      brainDir,
+      name,
+      description || `Executes the ${name} capability.`,
+      category,
+      paramSpec,
+      triggers,
+      () => this.loadSkillsFromDisk()
+    );
+    return [
+      `🛠️ **Skill Created & Registered!**`,
+      `---`,
+      `* **Skill ID**: \`${result.skillId}\``,
+      `* **Action Name**: \`${name.toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '')}\``,
+      `* **Category**: ${category}`,
+      `* **File**: [${result.fileName}](file:///h:/Brahma/backend/Brahma%20%5BBrain%5D/skills/brahma/${result.fileName})`,
+      `* **Hunar.md**: Updated — \`registered_skills_count\` incremented.`,
+      `---`,
+      `The skill is now **live** in the registry. Brahma will use it on the next invocation.`,
+    ].join('\n');
   }
 
   public static getMockState() {

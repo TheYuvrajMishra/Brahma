@@ -117,6 +117,31 @@ export class LLMService {
     try {
       return JSON.parse(responseText) as T;
     } catch {
+      // Braces balanced extraction to properly parse nested JSON even if there is surrounding fluff
+      const startIdx = responseText.indexOf('{');
+      if (startIdx !== -1) {
+        let braceCount = 0;
+        let endIdx = -1;
+        for (let i = startIdx; i < responseText.length; i++) {
+          if (responseText[i] === '{') {
+            braceCount++;
+          } else if (responseText[i] === '}') {
+            braceCount--;
+            if (braceCount === 0) {
+              endIdx = i;
+              break;
+            }
+          }
+        }
+        if (endIdx !== -1) {
+          try {
+            const jsonText = responseText.slice(startIdx, endIdx + 1);
+            return JSON.parse(jsonText) as T;
+          } catch {
+            // ignore and fallback
+          }
+        }
+      }
       console.error('❌ Failed to parse LLM JSON response:', responseText);
       throw new Error('Invalid JSON received from LLM.');
     }
