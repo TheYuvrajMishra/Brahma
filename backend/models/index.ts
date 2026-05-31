@@ -5,6 +5,7 @@ import Karma from './Karma';
 import Hunar from './Hunar';
 import Zehn from './Zehn';
 import Chintan from './Chintan';
+import VectorChunk from './VectorStore';
 
 export {
   Atman,
@@ -13,5 +14,6 @@ export {
   Karma,
   Hunar,
   Zehn,
-  Chintan
+  Chintan,
+  VectorChunk,
 };
