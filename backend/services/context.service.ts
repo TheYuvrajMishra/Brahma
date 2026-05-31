@@ -1,5 +1,6 @@
 import { Zehn } from '../models';
 import type { IEntity, ISession } from '../models/Zehn';
+import { RAGService, RAGOptions, RAGResult } from './rag.service';
 
 export interface HydratedEntity {
   id: string;
@@ -111,6 +112,22 @@ export class ContextService {
 
     lines.push('----------------------');
     return lines.join('\n');
+  }
+
+  /**
+   * Advanced RAG retrieval — the premium path.
+   * Uses the full 8-stage pipeline (query rewriting, HyDE, multi-query,
+   * hybrid search, reranking, MMR, compression) to return the most accurate,
+   * diverse, and token-efficient context block.
+   *
+   * Use this instead of hydrateAll() when the query is complex or
+   * the knowledge base is large and entity IDs are unknown.
+   */
+  public static async retrieveContext(
+    query: string,
+    options?: RAGOptions
+  ): Promise<RAGResult> {
+    return RAGService.run(query, options);
   }
 }
 

@@ -111,7 +111,9 @@ export class LLMService {
     config?: LLMConfig
   ): Promise<T> {
     const jsonConfig: LLMConfig = { ...config, responseFormat: 'json_object' };
-    const responseText = await this.query(messages, jsonConfig);
+    const raw = await this.query(messages, jsonConfig);
+    // Strip markdown code fences that some models add even with json_object format
+    const responseText = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     try {
       return JSON.parse(responseText) as T;
     } catch {
