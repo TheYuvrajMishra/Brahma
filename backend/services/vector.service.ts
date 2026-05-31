@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import VectorChunk, { DocType, IVectorChunk } from '../models/VectorStore';
 import { Zehn } from '../models';
 import type { IEntity, ISession } from '../models/Zehn';
@@ -205,38 +207,93 @@ export class VectorService {
     let indexed = 0;
     let skipped = 0;
 
-    const zehn = await Zehn.findOne({}).lean<{
-      entities: IEntity[];
-      sessions: ISession[];
-    }>();
+    // 1. Index files on disk from Brahma [Brain] folder
+    const brainDir = path.join(__dirname, '../Brahma [Brain]');
+    const scanAndIndexFiles = async (dir: string): Promise<void> => {
+      if (!fs.existsSync(dir)) return;
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
 
-    if (!zehn) {
-      console.warn('⚠️  Zehn DB is empty. Nothing to index.');
-      return { indexed, skipped };
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await scanAndIndexFiles(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          const relativePath = path.relative(brainDir, fullPath).replace(/\\/g, '/');
+          const content = fs.readFileSync(fullPath, 'utf-8');
+
+          let docType: DocType = 'generic';
+          if (relativePath.startsWith('memory/')) {
+            docType = 'memory';
+          } else if (relativePath.startsWith('skills/')) {
+            docType = 'skill';
+          } else {
+            const base = entry.name.replace('.md', '').toLowerCase();
+            if (['entity', 'session', 'skill', 'memory', 'mission'].includes(base)) {
+              docType = base as DocType;
+            }
+          }
+
+          // Chunk by markdown sections (split on header bounds)
+          const sections = content.split(/\n(?=#+ )/);
+
+          for (let i = 0; i < sections.length; i++) {
+            const sectionText = sections[i].trim();
+            if (!sectionText) continue;
+
+            const lines = sectionText.split('\n');
+            const header = lines[0].replace(/^#+\s+/, '').trim();
+            const chunkId = `${relativePath}#${header || `Section-${i + 1}`}`;
+
+            const stored = await this.upsertChunk({
+              docId: chunkId,
+              docType,
+              content: sectionText,
+              metadata: { filePath: relativePath, sectionIndex: i, header },
+            });
+            stored ? indexed++ : skipped++;
+          }
+        }
+      }
+    };
+
+    try {
+      await scanAndIndexFiles(brainDir);
+    } catch (err: any) {
+      console.warn('⚠️  Disk file indexing had a warning:', err.message);
     }
 
-    // Index entities
-    for (const entity of zehn.entities) {
-      const content = `[${entity.entityId}] ${entity.name}: ${entity.scope}. Relationships: ${entity.relationships}`;
-      const stored = await this.upsertChunk({
-        docId: entity.entityId,
-        docType: 'entity',
-        content,
-        metadata: { name: entity.name, category: entity.category },
-      });
-      stored ? indexed++ : skipped++;
-    }
+    // 2. Index legacy Zehn collections if populated
+    try {
+      const zehn = await Zehn.findOne({}).lean<{
+        entities: IEntity[];
+        sessions: ISession[];
+      }>();
 
-    // Index sessions
-    for (const session of zehn.sessions) {
-      const content = `[${session.sessionId}] ${session.focus}`;
-      const stored = await this.upsertChunk({
-        docId: session.sessionId,
-        docType: 'session',
-        content,
-        metadata: { date: session.date, tokenWeight: session.tokenWeight },
-      });
-      stored ? indexed++ : skipped++;
+      if (zehn) {
+        for (const entity of zehn.entities) {
+          const content = `[${entity.entityId}] ${entity.name}: ${entity.scope}. Relationships: ${entity.relationships}`;
+          const stored = await this.upsertChunk({
+            docId: entity.entityId,
+            docType: 'entity',
+            content,
+            metadata: { name: entity.name, category: entity.category },
+          });
+          stored ? indexed++ : skipped++;
+        }
+
+        for (const session of zehn.sessions) {
+          const content = `[${session.sessionId}] ${session.focus}`;
+          const stored = await this.upsertChunk({
+            docId: session.sessionId,
+            docType: 'session',
+            content,
+            metadata: { date: session.date, tokenWeight: session.tokenWeight },
+          });
+          stored ? indexed++ : skipped++;
+        }
+      }
+    } catch (err: any) {
+      console.warn('⚠️ Zehn index scan skipped:', err.message);
     }
 
     console.log(`✅ Indexing complete. Indexed: ${indexed}, Skipped (unchanged): ${skipped}`);

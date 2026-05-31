@@ -5,3 +5,5 @@ export * from './orchestrator.service';
 export * from './embedding.service';
 export * from './vector.service';
 export * from './rag.service';
+export * from './discord.service';
+

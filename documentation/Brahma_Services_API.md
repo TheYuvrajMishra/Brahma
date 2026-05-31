@@ -155,3 +155,15 @@ const result = await RAGService.run("How do I handle a complex coding mission?",
 | `decomposeMission` | `(title, objective, entityIds?, sessionIds?) → Promise<IDharma>` | LLM decomposes a goal into sub-tasks. Saves mission to Dharma DB. |
 | `executeNextTask` | `(missionId: string) → Promise<ISubTask \| null>` | Promotes the next PENDING sub-task to IN_PROGRESS. Returns `null` when complete. |
 | `completeTask` | `(missionId, subTaskId) → Promise<void>` | Marks a sub-task COMPLETED. Recalculates mission progress. |
+
+---
+
+## DiscordService & Dynamic Skill Registry (`services/discord.service.ts`)
+
+Brahma's primary action engine now functions as a dynamic registration interface mapping local markdown skill sheets onto the runtime capability mapping.
+
+| Method | Signature | Description |
+| :--- | :--- | :--- |
+| `loadSkillsFromDisk` | `() → void` | Recursively scans `Brahma [Brain]/skills/` for active markdown files, parses their YAML frontmatter, registers them into `skills`, and maps them to active runtime handlers. |
+| `parseYaml` | `(yamlStr: string) → Record<string, string>` | Lightweight built-in YAML parser to cleanly ingest metadata declarations without external package dependencies. |
+| `handleUserCommand` | `(prompt, userId, username, contextId) → Promise<string>` | Formulates LLM prompts dynamically constructed from active registered capabilities, resolves intents, and dispatches the execution target. |

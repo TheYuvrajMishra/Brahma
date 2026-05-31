@@ -38,7 +38,8 @@ Unified registry mapping daily workflows and active context files located in `me
 | :--- | :---: | :--- | :--- | :---: |
 | **2026-05-30** | `C-001` | Brahma Architecture setup & core engines deployment. | [2026-05-30.md](file:///h:/Brahma/Brahma%20%5BBrain%5D/memory/2026-05-30.md) | `LOW (~1.5k)` |
 
-*<!-- DYNAMIC_SESSION_INSERTION_MARKER -->*
+<!-- DYNAMIC_SESSION_INSERTION_MARKER -->
+| **2026-05-31** | `C-571` | Conversational memory sync between _.yuvraj.mishra._ and Brahma. | [2026-05-31.md](file:///h:/Brahma/Brahma%20%5BBrain%5D/memory/2026-05-31.md) | LOW (~1.0k) |
 
 ---
 

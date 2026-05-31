@@ -223,7 +223,7 @@ export class RAGService {
       chunks.map((c) => c.chunk.content)
     );
 
-    const selected: ScoredChunk[] = [];
+    const selected: (ScoredChunk & { idx: number })[] = [];
     const remaining = [...chunks.map((c, i) => ({ ...c, idx: i }))];
 
     while (selected.length < topK && remaining.length > 0) {
@@ -238,7 +238,7 @@ export class RAGService {
         for (const sel of selected) {
           const simToSel = cosineSimilarity(
             chunkEmbeddings[item.idx],
-            chunkEmbeddings[sel.chunk._id as unknown as number] ?? []
+            chunkEmbeddings[sel.idx]
           );
           if (simToSel > maxSimToSelected) maxSimToSelected = simToSel;
         }

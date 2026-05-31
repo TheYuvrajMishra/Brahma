@@ -105,8 +105,9 @@ Raw Query
 
 ### Phase B: Tactical Execution (Action)
 1. **Dispatch**: `OrchestratorService.executeNextTask()` promotes the next `PENDING` sub-task to `IN_PROGRESS`.
-2. **Skill Execution**: The Executor runs the appropriate skill procedure from the `skills/` directory.
-3. **Trace Log**: Results are logged as `K-XXX` rows in the `Karma` MongoDB collection.
+2. **Dynamic Skill Loading**: The system recursively scans the `Brahma [Brain]/skills/` directory at startup, parses the frontmatter YAML metadata, and registers executable handlers in the static registry. This ensures all system capabilities (S-001 through S-023) are dynamically exposed to the LLM system prompts without any hardcoded command definitions in the codebase.
+3. **Execution**: The Executor triggers the mapped skill handler corresponding to the LLM's selected action.
+4. **Trace Log**: Results are logged as `K-XXX` rows in the `Karma` MongoDB collection.
 
 ### Phase C: Cognitive Integration (Reflection & Decay)
 1. **Self-Audit**: `Chintan` compares `Karma` action traces against `Dharma` sub-tasks.
