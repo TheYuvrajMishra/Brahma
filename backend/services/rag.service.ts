@@ -344,19 +344,20 @@ export class RAGService {
     } = options;
 
     console.log(`\n🔬 RAG Pipeline starting for query: "${rawQuery.slice(0, 60)}..."`);
+    const skipLlm = LLMService.isLlmOffline;
 
     // ── Stage 1: Query Rewriting ──────────────────────────────────────────
-    const rewrittenQuery = skipRewrite ? null : await this.rewriteQuery(rawQuery);
+    const rewrittenQuery = (skipRewrite || skipLlm) ? null : await this.rewriteQuery(rawQuery);
     const activeQuery = rewrittenQuery ?? rawQuery;
     console.log(`  [1/8] Rewrite: "${activeQuery.slice(0, 60)}"`);
 
     // ── Stage 2: Multi-Query Expansion ───────────────────────────────────
-    const variants = await this.expandQuery(activeQuery);
+    const variants = (skipLlm) ? [] : await this.expandQuery(activeQuery);
     const allQueries = [activeQuery, ...variants];
     console.log(`  [2/8] Expanded to ${allQueries.length} query variants.`);
 
     // ── Stage 3: HyDE ────────────────────────────────────────────────────
-    const hydeDoc = skipHyDE ? null : await this.generateHyDE(activeQuery);
+    const hydeDoc = (skipHyDE || skipLlm) ? null : await this.generateHyDE(activeQuery);
     const embeddingInputs = hydeDoc ? [hydeDoc, ...allQueries] : allQueries;
     console.log(`  [3/8] HyDE document: ${hydeDoc ? 'generated' : 'skipped'}`);
 
@@ -409,7 +410,7 @@ export class RAGService {
     }
 
     // ── Stage 6: LLM Reranking ────────────────────────────────────────────
-    const reranked = await this.rerank(activeQuery, retrievedChunks, rerankTopK);
+    const reranked = (skipLlm) ? retrievedChunks.slice(0, rerankTopK) : await this.rerank(activeQuery, retrievedChunks, rerankTopK);
     console.log(`  [6/8] Reranked: ${retrievedChunks.length} → ${reranked.length} chunks.`);
 
     // ── Stage 7: MMR Deduplication ────────────────────────────────────────
@@ -417,7 +418,9 @@ export class RAGService {
     console.log(`  [7/8] MMR: ${reranked.length} → ${diverse.length} diverse chunks.`);
 
     // ── Stage 8: Contextual Compression ──────────────────────────────────
-    const compressed = await this.compressChunks(activeQuery, diverse, maxTokenBudget);
+    const compressed = (skipLlm)
+      ? diverse.map((c) => ({ content: c.chunk.content.slice(0, 400), source: c }))
+      : await this.compressChunks(activeQuery, diverse, maxTokenBudget);
     console.log(`  [8/8] Compressed to ${compressed.length} chunks (~${compressed.reduce((s, c) => s + estimateTokens(c.content), 0)} tokens).`);
 
     // ── Assemble final context block ──────────────────────────────────────

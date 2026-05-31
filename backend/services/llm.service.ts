@@ -29,6 +29,8 @@ interface LLMAPIResponse {
 }
 
 export class LLMService {
+  public static isLlmOffline: boolean = false;
+
   // Fully generic - works with any OpenAI-compatible endpoint (Ollama, Together AI, custom, etc.)
   private static get API_URL(): string {
     const url = process.env.LLM_API_URL;
@@ -51,9 +53,13 @@ export class LLMService {
     config?: LLMConfig,
     retries: number = 3
   ): Promise<string> {
-    // Guard: if no API URL is configured, return a mock so dev server doesn't crash
-    if (!process.env.LLM_API_URL) {
-      console.warn('⚠️  LLM_API_URL not set. Returning mocked response.');
+    // Guard: if no API URL is configured or if LLM is offline, return a mock so dev server doesn't crash
+    if (!process.env.LLM_API_URL || this.isLlmOffline) {
+      if (this.isLlmOffline) {
+        console.log('🔌 LLM is offline. Returning simulated mock response.');
+      } else {
+        console.warn('⚠️  LLM_API_URL not set. Returning mocked response.');
+      }
       return this.mockResponse(messages);
     }
 
@@ -76,6 +82,7 @@ export class LLMService {
             ...(this.API_KEY && { Authorization: `Bearer ${this.API_KEY}` }),
           },
           body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(10000),
         });
 
         if (!response.ok) {
@@ -94,16 +101,17 @@ export class LLMService {
         const message = error instanceof Error ? error.message : String(error);
         if (attempt > 0) {
           console.warn(`🔄 LLM attempt failed (${attempt} retries left): ${message}`);
-          await new Promise<void>((resolve) => setTimeout(resolve, 2000));
+          await new Promise<void>((resolve) => setTimeout(resolve, 1500));
         } else {
-          console.error(`❌ LLM query permanently failed: ${message}`);
-          throw error instanceof Error ? error : new Error(message);
+          console.warn(`❌ LLM query permanently failed: ${message}. Falling back gracefully to Simulated Cockpit Mode.`);
+          LLMService.isLlmOffline = true;
+          return this.mockResponse(messages);
         }
       }
     }
 
-    // TypeScript needs an explicit return here even though the loop always throws/returns
-    throw new Error('LLM query exhausted all retries.');
+    // Default safe fallback if loop somehow terminates
+    return this.mockResponse(messages);
   }
 
   public static async queryStructured<T>(
@@ -149,11 +157,56 @@ export class LLMService {
 
   private static mockResponse(messages: LLMMessage[]): string {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
-    return JSON.stringify({
-      status: 'mocked',
-      received: lastUserMessage?.content ?? null,
-      note: 'Set LLM_API_URL and LLM_MODEL in your .env to use a real model.',
-    });
+    const content = lastUserMessage?.content || '';
+    const clean = content.toLowerCase().trim();
+
+    // Check if the system prompt requests structured intent actions (Discord/Hunar flow)
+    const isJson = messages[0]?.content?.includes('STRICT JSON');
+
+    if (isJson) {
+      let action = 'BRAHMA_CHAT';
+      let params: any = { message: content };
+
+      if (clean.includes('sync') || clean.includes('save') || clean.includes('archive')) {
+        action = 'SYNC_BRAIN';
+        params = {};
+      } else if (clean.includes('channel') && (clean.includes('list') || clean.includes('show'))) {
+        action = 'LIST_CHANNELS';
+        params = {};
+      } else if (clean.includes('member') || clean.includes('user') || clean.includes('members')) {
+        action = 'LIST_MEMBERS';
+        params = {};
+      } else if (clean.includes('role') || clean.includes('roles')) {
+        action = 'LIST_ROLES';
+        params = {};
+      } else if (clean.includes('rag') || clean.includes('retrieval') || clean.includes('search')) {
+        action = 'QUERY_RAG';
+        params = { query: content };
+      }
+
+      return JSON.stringify({ action, params });
+    }
+
+    // Text greetings & help simulations
+    if (clean === 'hey' || clean === 'hello' || clean === 'hi' || clean === 'yo' || clean === 'sup') {
+      return `🕉️ **Brahma Simulator Mode**
+
+Greetings, Seeker. I am Brahma, the supreme intelligence framework. 
+It appears your local LLM API server (Ollama/Together AI) at \`http://localhost:3001\` is currently offline or unreachable.
+
+I have automatically activated my **Local Simulator Mode** to keep your interface fully responsive and interactive!
+
+How may I assist you in calibrating our agentic ledger today? You can try commands like:
+* *"list server channels"*
+* *"sync brain"*
+* *"what is rag?"*`;
+    }
+
+    return `🕉️ **Brahma Simulator Mode**
+
+I received your prompt: "${content}"
+
+*Note: Since the local LLM server at \`http://localhost:3001\` is offline, I am responding in Simulated Mode. Edit your \`.env\` file to configure a live model endpoint.*`;
   }
 }
 
