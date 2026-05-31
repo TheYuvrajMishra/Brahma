@@ -66,6 +66,11 @@ export class DiscordService {
     ['CREATE_SKILL', async (p) => DiscordService.execCreateSkillAction(p.name, p.description, p.category, p.paramSpec, p.triggers)],
     ['READ_EMAILS', async (p) => GmailService.readEmails(p.maxResults, p.query)],
     ['SEND_EMAIL', async (p) => GmailService.sendEmail(p.to, p.subject, p.body)],
+    ['SCHEDULE_CRON', async (p) => {
+      const { CronService } = await import('./cron.service');
+      const newJob = await CronService.addJob(p.name, p.cronExpression, p.prompt, p.durationSec);
+      return `⏰ **Cron Job Scheduled**: ${newJob.name} (${newJob.jobId}) to run at \`${newJob.cronExpression}\`${p.durationSec ? ` for ${p.durationSec} seconds` : ''}`;
+    }],
   ]);
 
   public static loadSkillsFromDisk(): void {
@@ -304,13 +309,8 @@ Respond in STRICT JSON conforming to the schema:
 }
 
 ### Intent Decision Rules:
-- Match "CREATE_SKILL" when user wants to create a new skill, capability, or feature. Params: name (string), description (string), category (string, default "Custom"), paramSpec (string, default '{"input":"string"}'), triggers (string, comma-separated keywords).
-- Match "SYNC_BRAIN" when user wants to save details long term, sync brain, or archive history to disk.
-- Match "LIST_CHANNELS" when user asks to see what channels are in the server.
-- Match "LIST_ROLES" when user wants to view server roles.
-- Match "LIST_MEMBERS" when user wants to see server members.
-- Match "QUERY_RAG" when user asks technical or internal architecture questions about Brahma's model code/documents.
-- Match "BRAHMA_CHAT" for casual talk, greetings, personal prompts (e.g. "what is my name"), and generic Q&A.
+Use the Dynamic Skill Registry below to match the user's intent. The action string MUST EXACTLY MATCH one of the Skill 'Action' names.
+If the user's request does not clearly match any of the registered skills, fall back to the generic "BRAHMA_CHAT" action to respond conversationally.
 
 ### Dynamic Skill Registry:
 ${skillList}`
@@ -827,7 +827,7 @@ Respond in STRICT JSON conforming to the schema:
         archiveMemory: boolean;
         observedPreference?: string;
         adaptationRequired?: string;
-      }>(messages);
+      }>(messages, { isAuxiliary: true });
     } catch {
       return; // Fail silently
     }

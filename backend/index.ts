@@ -286,11 +286,58 @@ app.post('/api/playground/query', async (req: Request, res: Response) => {
   }
 });
 
+// ─── Cron Jobs Routes ───────────────────────────────────────────────────────
+app.get('/api/cron', async (req: Request, res: Response) => {
+  try {
+    const { CronService } = await import('./services/cron.service');
+    const jobs = await CronService.listJobs();
+    res.json(jobs);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/cron', async (req: Request, res: Response) => {
+  try {
+    const { name, cronExpression, prompt } = req.body;
+    if (!name || !cronExpression || !prompt) {
+      return res.status(400).json({ error: 'name, cronExpression, and prompt are required' });
+    }
+    const { CronService } = await import('./services/cron.service');
+    const newJob = await CronService.addJob(name, cronExpression, prompt);
+    res.status(201).json(newJob);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/cron/:jobId/toggle', async (req: Request, res: Response) => {
+  try {
+    const { CronService } = await import('./services/cron.service');
+    const updatedJob = await CronService.toggleJob(req.params.jobId as string);
+    res.json(updatedJob);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/cron/:jobId', async (req: Request, res: Response) => {
+  try {
+    const { CronService } = await import('./services/cron.service');
+    await CronService.deleteJob(req.params.jobId as string);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Bootstrap ─────────────────────────────────────────────────────────────
 async function bootstrap() {
   console.log('⚙️ Bootstrapping Brahma Engine...');
 
   await DBService.connect();
+  const { CronService } = await import('./services/cron.service');
+  await CronService.init();
 
   try {
     await VectorService.indexAllBrainDocuments();

@@ -8,6 +8,7 @@ export interface LLMConfig {
   maxTokens?: number;
   model?: string;
   responseFormat?: 'json_object' | 'text';
+  isAuxiliary?: boolean;
 }
 
 interface LLMResponseChoice {
@@ -29,7 +30,29 @@ interface LLMAPIResponse {
 }
 
 export class LLMService {
-  public static isLlmOffline: boolean = false;
+  private static _isLlmOffline: boolean = false;
+  private static lastFailureTime: number = 0;
+  private static readonly COOLDOWN_MS = 30000; // 30 seconds
+
+  public static get isLlmOffline(): boolean {
+    if (this._isLlmOffline) {
+      const elapsed = Date.now() - this.lastFailureTime;
+      if (elapsed > this.COOLDOWN_MS) {
+        console.log('🔄 Cooldown elapsed. Attempting to bring LLM back online...');
+        this._isLlmOffline = false;
+        return false;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  public static set isLlmOffline(val: boolean) {
+    this._isLlmOffline = val;
+    if (val) {
+      this.lastFailureTime = Date.now();
+    }
+  }
 
   // Fully generic - works with any OpenAI-compatible endpoint (Ollama, Together AI, custom, etc.)
   private static get API_URL(): string {
@@ -103,8 +126,13 @@ export class LLMService {
           console.warn(`🔄 LLM attempt failed (${attempt} retries left): ${message}`);
           await new Promise<void>((resolve) => setTimeout(resolve, 1500));
         } else {
-          console.warn(`❌ LLM query permanently failed: ${message}. Falling back gracefully to Simulated Cockpit Mode.`);
-          LLMService.isLlmOffline = true;
+          console.warn(`❌ LLM query permanently failed: ${message}.`);
+          if (!config?.isAuxiliary) {
+            console.warn('Falling back gracefully to Simulated Cockpit Mode.');
+            LLMService.isLlmOffline = true;
+          } else {
+            console.warn('Auxiliary query failed. Skipping Simulated Cockpit Mode lockout.');
+          }
           return this.mockResponse(messages);
         }
       }
@@ -118,7 +146,9 @@ export class LLMService {
     messages: LLMMessage[],
     config?: LLMConfig
   ): Promise<T> {
-    const jsonConfig: LLMConfig = { ...config, responseFormat: 'json_object' };
+    const jsonConfig: LLMConfig = { ...config };
+    // Removed responseFormat: 'json_object' to avoid routing errors on free API proxies.
+    // The prompt steering and robust brace parsing below will handle JSON extraction.
     const raw = await this.query(messages, jsonConfig);
     // Strip markdown code fences that some models add even with json_object format
     const responseText = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();

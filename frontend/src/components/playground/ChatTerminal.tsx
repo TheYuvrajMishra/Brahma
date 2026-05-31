@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FiSend, FiRefreshCw, FiTerminal, FiZap } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import axios from 'axios';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -170,9 +174,47 @@ export default function ChatTerminal({ ragOptions, onTrace, onToggleTrace, trace
               <div className={`rounded p-3 text-sm font-description leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-white text-black'
-                  : 'bg-[#0d0d0d] border border-[#1c1c1c] text-[#e5e5e5]'
+                  : 'bg-[#0d0d0d] border border-[#1c1c1c] text-[#e5e5e5] prose prose-invert max-w-none'
               }`}>
-                <pre className="whitespace-pre-wrap font-description text-sm leading-relaxed">{msg.content}</pre>
+                {msg.role === 'user' ? (
+                  <pre className="whitespace-pre-wrap font-description text-sm leading-relaxed">{msg.content}</pre>
+                ) : (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({node, inline, className, children, ...props}: any) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            {...props}
+                            children={String(children).replace(/\n$/, '')}
+                            style={vscDarkPlus as any}
+                            language={match[1]}
+                            PreTag="div"
+                          />
+                        ) : (
+                          <code {...props} className={`${className} bg-[#222] px-1 py-0.5 rounded text-emerald-400 font-mono text-[13px]`}>
+                            {children}
+                          </code>
+                        )
+                      },
+                      p({children}) {
+                        return <p className="mb-2 last:mb-0">{children}</p>;
+                      },
+                      ul({children}) {
+                        return <ul className="list-disc pl-4 mb-2">{children}</ul>;
+                      },
+                      ol({children}) {
+                        return <ol className="list-decimal pl-4 mb-2">{children}</ol>;
+                      },
+                      a({children, href}) {
+                        return <a href={href} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">{children}</a>;
+                      }
+                    }}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
+                )}
               </div>
             </div>
           </motion.div>

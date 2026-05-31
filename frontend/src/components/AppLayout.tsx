@@ -15,6 +15,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { name: 'Playground', path: '/playground', icon: FiMessageSquare, desc: 'Advanced RAG Chat' },
     { name: 'Brahma Brain', path: '/brain', icon: FiCpu, desc: 'Context & Decay Engine' },
     { name: 'Skill Registry', path: '/skills', icon: FiLayers, desc: 'Hunar Executables' },
+    { name: 'Scheduled Jobs', path: '/cron', icon: FiActivity, desc: 'Automated Tasks' },
     { name: 'Credentials', path: '/keys', icon: FiKey, desc: 'LLM & DB Configurations' },
   ];
 

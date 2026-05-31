@@ -79,7 +79,7 @@ export class RAGService {
     ];
 
     try {
-      const rewritten = await LLMService.query(messages, { temperature: 0.1, maxTokens: 128 });
+      const rewritten = await LLMService.query(messages, { temperature: 0.1, maxTokens: 128, isAuxiliary: true });
       return rewritten.trim() || rawQuery;
     } catch {
       return rawQuery; // graceful fallback
@@ -111,6 +111,7 @@ export class RAGService {
         temperature: 0.6,
         maxTokens: 256,
         responseFormat: 'json_object',
+        isAuxiliary: true,
       });
 
       // Parse: LLM may return {"queries": [...]} or just [...]
@@ -151,7 +152,7 @@ export class RAGService {
     ];
 
     try {
-      return (await LLMService.query(messages, { temperature: 0.3, maxTokens: 256 })).trim();
+      return (await LLMService.query(messages, { temperature: 0.3, maxTokens: 256, isAuxiliary: true })).trim();
     } catch {
       return query;
     }
@@ -190,7 +191,7 @@ export class RAGService {
     ];
 
     try {
-      const result = await LLMService.queryStructured<{ scores: number[] }>(messages);
+      const result = await LLMService.queryStructured<{ scores: number[] }>(messages, { isAuxiliary: true });
       const scores = result.scores;
 
       return chunks
@@ -290,7 +291,7 @@ export class RAGService {
 
       try {
         const extracted = (
-          await LLMService.query(messages, { temperature: 0.0, maxTokens: 300 })
+          await LLMService.query(messages, { temperature: 0.0, maxTokens: 300, isAuxiliary: true })
         ).trim();
 
         if (extracted === '[NOT_RELEVANT]' || extracted.length < 10) continue;
@@ -342,6 +343,27 @@ export class RAGService {
       skipRewrite = false,
       skipHyDE = false,
     } = options;
+
+    const clean = rawQuery.trim().toLowerCase();
+    const casualGreetings = ['hello', 'hey', 'hi', 'yo', 'sup', 'howdy', 'test', 'status', 'ping', 'pong', 'ok', 'okay'];
+    const isCasual = clean.length < 12 || casualGreetings.includes(clean);
+
+    if (isCasual) {
+      console.log(`\n🔬 RAG Pipeline skipped for casual query: "${rawQuery.slice(0, 60)}..."`);
+      return {
+        contextBlock: '',
+        sources: [],
+        tokenEstimate: 0,
+        stages: {
+          rewrittenQuery: null,
+          queryVariants: [],
+          hydeDoc: null,
+          retrievedCount: 0,
+          afterRerankCount: 0,
+          afterMmrCount: 0,
+        },
+      };
+    }
 
     console.log(`\n🔬 RAG Pipeline starting for query: "${rawQuery.slice(0, 60)}..."`);
     const skipLlm = LLMService.isLlmOffline;
