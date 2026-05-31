@@ -6,6 +6,7 @@ import { RAGService } from './rag.service';
 import { OrchestratorService } from './orchestrator.service';
 import { Dharma } from '../models';
 import { ContextService } from './context.service';
+import { GmailService } from './gmail.service';
 
 export interface DiscordAction {
   action: string;
@@ -63,6 +64,8 @@ export class DiscordService {
     ['SYNC_BRAIN', async (p, ctx) => DiscordService.execSyncBrain(ctx.userId, ctx.username)],
     ['BRAHMA_CHAT', async (p, ctx) => DiscordService.execBrahmaChat(ctx.prompt, ctx.userId)],
     ['CREATE_SKILL', async (p) => DiscordService.execCreateSkillAction(p.name, p.description, p.category, p.paramSpec, p.triggers)],
+    ['READ_EMAILS', async (p) => GmailService.readEmails(p.maxResults, p.query)],
+    ['SEND_EMAIL', async (p) => GmailService.sendEmail(p.to, p.subject, p.body)],
   ]);
 
   public static loadSkillsFromDisk(): void {
