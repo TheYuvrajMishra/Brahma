@@ -292,11 +292,21 @@ export class DiscordService {
       this.loadSkillsFromDisk();
     }
 
+    // Retrieve and update history with user prompt globally first
+    const key = userId || 'default';
+    let history = this.chatHistories.get(key) || [];
+    history.push({ role: 'user', content: prompt });
+    if (history.length > 12) {
+      history = history.slice(-12);
+    }
+    this.chatHistories.set(key, history);
+
     // Dynamically compile intent schema from live registry to avoid hardcoding!
     const skillList = Array.from(this.skills.values())
       .map((s, i) => `${i + 1}. Skill ID: \`${s.id}\` | Action: **${s.name}** | Category: *${s.category}*\n   Description: ${s.description}\n   Params: \`${s.paramSpec}\``)
       .join('\n\n');
 
+    // Messages for Intent Router - includes history for multi-turn parameter context!
     const messages: LLMMessage[] = [
       {
         role: 'system',
@@ -312,9 +322,13 @@ Respond in STRICT JSON conforming to the schema:
 Use the Dynamic Skill Registry below to match the user's intent. The action string MUST EXACTLY MATCH one of the Skill 'Action' names.
 If the user's request does not clearly match any of the registered skills, fall back to the generic "BRAHMA_CHAT" action to respond conversationally.
 
+### Parameter Guidelines:
+When generating values for parameters (such as the 'body' for SEND_EMAIL, or 'content' for SEND_MESSAGE), always make them highly detailed, comprehensive, professional, and directly informative based on the context. Never write short placeholders or single-sentence summaries.
+
 ### Dynamic Skill Registry:
 ${skillList}`
       },
+      ...history.slice(0, -1), // History except the very last user prompt we just pushed
       {
         role: 'user',
         content: prompt
@@ -336,17 +350,33 @@ ${skillList}`
       (s) => s.name === actionResponse.action
     );
 
+    let responseText: string;
     try {
       if (skill) {
-        return await skill.handler(actionResponse.params || {}, { userId, username, prompt });
+        responseText = await skill.handler(actionResponse.params || {}, { userId, username, prompt });
       } else {
         // Fallback to conversational chat if action is unknown or not mapped
-        return await this.execBrahmaChat(prompt, userId);
+        responseText = await this.execBrahmaChat(prompt, userId);
       }
     } catch (err: any) {
       console.error(`❌ Dynamic Execution Failed for ${actionResponse.action}:`, err);
-      return `❌ Action ${actionResponse.action} failed: ${err.message}`;
+      responseText = `❌ Action ${actionResponse.action} failed: ${err.message}`;
     }
+
+    // Update history with assistant reply (globally for all actions and skills!)
+    history = this.chatHistories.get(key) || [];
+    history.push({ role: 'assistant', content: responseText });
+    if (history.length > 12) {
+      history = history.slice(-12);
+    }
+    this.chatHistories.set(key, history);
+
+    // Launch global autonomous background reflection and persistence asynchronously
+    this.runAutonomousReflection(key, prompt, responseText).catch((err) => {
+      console.error('⚠️ Autonomous background reflection failed:', err.message);
+    });
+
+    return responseText;
   }
 
   // ==========================================
@@ -635,15 +665,7 @@ ${skillList}`
 
   private static async execBrahmaChat(message: string, userId?: string): Promise<string> {
     const key = userId || 'default';
-    let history = this.chatHistories.get(key) || [];
-
-    // Append new user message
-    history.push({ role: 'user', content: message });
-
-    // Keep history at a maximum of 12 messages to prevent token bloat
-    if (history.length > 12) {
-      history = history.slice(-12);
-    }
+    const history = this.chatHistories.get(key) || [];
 
     const atmanContext = this.getAtmanContext();
 
@@ -660,16 +682,6 @@ ${atmanContext}`
     ];
 
     const reply = await LLMService.query(messages);
-
-    // Save assistant reply to history
-    history.push({ role: 'assistant', content: reply });
-    this.chatHistories.set(key, history);
-
-    // Launch autonomous background reflection and persistence asynchronously
-    this.runAutonomousReflection(key, message, reply).catch((err) => {
-      console.error('⚠️ Autonomous background reflection failed:', err.message);
-    });
-
     return reply;
   }
 
@@ -740,7 +752,7 @@ Generate ONLY the valid markdown content — do not wrap in additional markdown 
       }
     ];
 
-    const memoryLogContent = await LLMService.query(messages);
+    const memoryLogContent = await LLMService.query(messages, { isAuxiliary: true });
 
     const brainDir = path.join(__dirname, '../Brahma [Brain]');
     const memoryDir = path.join(brainDir, 'memory');
