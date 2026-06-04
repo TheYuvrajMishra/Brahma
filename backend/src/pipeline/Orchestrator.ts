@@ -7,9 +7,13 @@ import { Composer } from './Composer';
 import { Observer } from './Observer';
 import { Logger } from '../core/Logger';
 import { EventBus, SystemEvents } from '../core/EventBus';
+import { HealthServer } from '../core/HealthServer';
 
 export class PipelineOrchestrator {
     private adapters: Adapter[] = [];
+    private queue: { message: NormalizedMessage; adapter: Adapter; resolve: (val: any) => void; reject: (err: any) => void }[] = [];
+    private maxConcurrency = 5;
+    private currentProcessing = 0;
 
     registerAdapter(adapter: Adapter) {
         this.adapters.push(adapter);
@@ -17,7 +21,38 @@ export class PipelineOrchestrator {
 
     async start() {
         for (const adapter of this.adapters) {
-            await adapter.init((msg) => this.processMessage(msg, adapter));
+            await adapter.init((msg) => this.enqueueMessage(msg, adapter));
+        }
+    }
+
+    private enqueueMessage(message: NormalizedMessage, adapter: Adapter): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ message, adapter, resolve, reject });
+            HealthServer.metrics.activeQueueLength = this.queue.length;
+            this.processQueue();
+        });
+    }
+
+    private async processQueue() {
+        if (this.currentProcessing >= this.maxConcurrency || this.queue.length === 0) {
+            return;
+        }
+
+        this.currentProcessing++;
+        const item = this.queue.shift();
+        if (item) {
+            HealthServer.metrics.activeQueueLength = this.queue.length;
+            try {
+                await this.processMessage(item.message, item.adapter);
+                item.resolve(true);
+            } catch (error) {
+                item.reject(error);
+            } finally {
+                this.currentProcessing--;
+                this.processQueue();
+            }
+        } else {
+            this.currentProcessing--;
         }
     }
 
@@ -66,9 +101,12 @@ export class PipelineOrchestrator {
             Logger.info('Pipeline', message.message_id, totalTime, 'COMPLETE');
             EventBus.emit(SystemEvents.PIPELINE_COMPLETE, { message, response, totalTime });
             
+            HealthServer.metrics.messagesProcessed++;
+            
         } catch (error) {
             Logger.error('Pipeline', message.message_id, error);
             EventBus.emit(SystemEvents.PIPELINE_ERROR, { message, error });
+            HealthServer.metrics.errors++;
         }
     }
 }

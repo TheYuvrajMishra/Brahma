@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
+import { Logger } from './Logger';
 
 export class MemoryManager {
     static getSoul(): string {
@@ -48,6 +49,26 @@ export class MemoryManager {
             fs.writeFileSync(path.join(config.brainPath, 'moment.md'), content, 'utf-8');
         } catch (err) {
             console.error('Failed to write to moment.md:', err);
+        }
+    }
+
+    static updateZehn(content: string): void {
+        try {
+            fs.writeFileSync(path.join(config.brainPath, 'zehn.md'), content, 'utf-8');
+            Logger.audit('MEMORY_WRITE', { file: 'zehn.md', type: 'update', length: content.length });
+        } catch (err) {
+            console.error('Failed to write to zehn.md:', err);
+        }
+    }
+
+    static appendZehnFact(fact: string): void {
+        try {
+            const current = this.getZehn();
+            const appendText = `\n- [${new Date().toISOString()}] ${fact}`;
+            fs.writeFileSync(path.join(config.brainPath, 'zehn.md'), current + appendText, 'utf-8');
+            Logger.audit('MEMORY_WRITE', { file: 'zehn.md', type: 'append', fact });
+        } catch (err) {
+            console.error('Failed to append to zehn.md:', err);
         }
     }
 }

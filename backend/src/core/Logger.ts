@@ -22,4 +22,20 @@ export class Logger {
         };
         console.error(JSON.stringify(logEntry));
     }
+
+    static audit(action: string, details: any) {
+        const logEntry = {
+            timestamp: new Date().toISOString(),
+            level: 'AUDIT',
+            action,
+            details
+        };
+        const logString = JSON.stringify(logEntry) + '\n';
+        console.log(logString.trim());
+        try {
+            require('fs').appendFileSync(require('path').join(__dirname, '../../audit.log'), logString);
+        } catch (err) {
+            console.error('Failed to write to audit log:', err);
+        }
+    }
 }

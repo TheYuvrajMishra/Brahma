@@ -1,0 +1,4 @@
+{
+  "ignore": ["audit.log", "brahma [brain]/*", "logs/*"],
+  "ext": "ts,js,json"
+}

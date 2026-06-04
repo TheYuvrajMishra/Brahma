@@ -38,11 +38,15 @@ CRITICAL INSTRUCTIONS:
         }
 
         // Fast Reply Lane (Simple / Greeting)
+        const moment = MemoryManager.getMoment();
         const systemPrompt = `
 You are Brahma. Here is your soul:
 ${soul}
 
-Respond to the user's message appropriately. Keep it concise.
+Here is the current conversation memory (Moment):
+${moment}
+
+Respond to the user's message appropriately. Keep it concise and use the context from the memory to remember things like their name.
         `.trim();
 
         const responseText = await LLMService.chat(systemPrompt, message.content);
