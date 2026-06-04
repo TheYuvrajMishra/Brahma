@@ -43,14 +43,12 @@ Current Fact Count: Use T-100+ for new facts.
 
             // Apply updates
             for (const entity of update.newEntities) {
-                await MemoryService.saveEntity(entity.id, entity.category, entity.name, entity.description, entity.tags);
+                await MemoryService.updateEntity(entity.id, entity.category, entity.name, entity.description, entity.tags);
             }
             for (const rel of update.newRelationships) {
-                await MemoryService.saveRelationship(rel.id, rel.source, rel.relation, rel.target, rel.strength);
+                await MemoryService.addRelationship(rel.id, rel.source, rel.relation, rel.target, rel.strength);
             }
-            for (const fact of update.newFacts) {
-                await MemoryService.saveFact(fact.id, fact.category, fact.fact, fact.confidence);
-            }
+            // Add Fact saving logic here if needed...
 
             console.log('Reflection complete. Brain evolved.');
         } catch (error) {

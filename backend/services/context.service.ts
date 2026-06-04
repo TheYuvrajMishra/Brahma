@@ -34,16 +34,7 @@ export class ContextService {
                 }
             }
 
-            // Fallback: search the entire file for the query if not in index
-            const fileLineIndex = lines.findIndex(l => l.toLowerCase().includes(query.toLowerCase()));
-            if (fileLineIndex !== -1) {
-                // Return that line plus some surrounding context
-                const start = Math.max(0, fileLineIndex - 2);
-                const end = Math.min(lines.length, fileLineIndex + 5);
-                return lines.slice(start, end).join('\n');
-            }
-
-            return "Context not found in index or file.";
+            return "Context not found in index.";
         } catch (error) {
             console.error('Context Service Error:', error);
             return '';

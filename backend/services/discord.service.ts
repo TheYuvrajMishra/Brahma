@@ -36,13 +36,7 @@ export class DiscordService {
                 if (message.channel.isTextBased()) {
                     await (message.channel as any).sendTyping();
                 }
-                
-                const sessionContext = {
-                    userId: message.author.id,
-                    userName: message.author.username
-                };
-                
-                const response = await OrchestratorService.run(query, sessionContext);
+                const response = await OrchestratorService.run(query);
                 
                 // Handle long responses
                 if (response.length > 2000) {

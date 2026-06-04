@@ -2,25 +2,13 @@ import { PlannerService } from './planner.service';
 import { RAGService } from './rag.service';
 import { LLMService, ChatMessage } from './llm.service';
 import { ContextService } from './context.service';
-import { ReflectionService } from './reflection.service';
-
-export interface SessionContext {
-    userId: string;
-    userName: string;
-}
 
 export class OrchestratorService {
-    static async run(userQuery: string, sessionContext?: SessionContext): Promise<string> {
+    static async run(userQuery: string): Promise<string> {
         try {
-            // 0. Fast-path context
-            let preliminaryContext = '';
-            if (sessionContext) {
-                preliminaryContext = `User Session: Discord User ID ${sessionContext.userId}, Name: ${sessionContext.userName}\n`;
-            }
-
             // 1. Plan (Buddhi)
             console.log('--- Phase A: Strategic Synthesis (Planning) ---');
-            const plan = await PlannerService.generatePlan(userQuery, preliminaryContext);
+            const plan = await PlannerService.generatePlan(userQuery);
             console.log('Plan generated:', JSON.stringify(plan, null, 2));
 
             // 2. Hydrate Context (RAG)
@@ -37,9 +25,8 @@ export class OrchestratorService {
 
             const response = await LLMService.chat(messages);
             
-            // 4. Reflection (Chintan)
+            // 4. Reflection (Chintan) - Placeholder for now
             console.log('--- Phase C: Cognitive Integration (Reflection) ---');
-            await ReflectionService.reflect(userQuery, response);
             
             return response;
         } catch (error) {

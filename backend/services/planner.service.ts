@@ -76,7 +76,7 @@ export class PlannerService {
     /**
      * Buddhi: Decomposes the user query into a strategic plan.
      */
-    static async generatePlan(userQuery: string, preliminaryContext: string = ''): Promise<Plan> {
+    static async generatePlan(userQuery: string): Promise<Plan> {
         const soul = await ContextService.getSoul();
         
         const systemPrompt = `
@@ -91,7 +91,6 @@ Available Context:
 - Karma/long_term_memory.md (Permanent facts)
 - Chintan/evolution.md (Reflection/style)
 
-${preliminaryContext ? `Preliminary Context:\n${preliminaryContext}\n` : ''}
 You MUST respond with a valid JSON object matching the structure below.
 Do not include any explanations, markdown code blocks, or preamble. Return ONLY the raw JSON.
 
