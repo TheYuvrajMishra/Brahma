@@ -1,5 +1,15 @@
 # Brahma Core System & Execution Workflow
 
+```yaml
+id: WORKFLOW
+version: 2.0.0
+last_sync: 2026-05-31T13:44:41+05:30
+agent_permission: READ-ONLY
+description: "Core execution cycle, RAG pipeline, database layer, token-saving strategies, and multi-agent coordination."
+```
+
+---
+
 ## 1. The Core System Architecture ("The Brahma Loop")
 
 Brahma is a **closed-loop agentic intelligence framework**. Cognitive functions are distributed across specialized engines, a database layer, and a full advanced RAG retrieval stack. No single large prompt; instead, lightweight, purpose-scoped context is injected at each stage.
