@@ -1,0 +1,30 @@
+import { ISkill } from '../types/Skill';
+import { Logger } from './Logger';
+import { WebSearch } from '../skills/WebSearch';
+import { LlmCall } from '../skills/LlmCall';
+import { WriteBlog, WriteEmail } from '../skills/Writers';
+
+class SkillRegistryClass {
+    private skills: Map<string, ISkill> = new Map();
+
+    register(skill: ISkill) {
+        this.skills.set(skill.name, skill);
+        Logger.info('SkillRegistry', 'system', 0, `Registered skill: ${skill.name}`);
+    }
+
+    async runSkill(toolName: string, params: any): Promise<string> {
+        const skill = this.skills.get(toolName);
+        if (!skill) {
+            throw new Error(`Skill not found: ${toolName}`);
+        }
+        return await skill.execute(params);
+    }
+}
+
+export const SkillRegistry = new SkillRegistryClass();
+
+// Auto-register default skills
+SkillRegistry.register(new WebSearch());
+SkillRegistry.register(new LlmCall());
+SkillRegistry.register(new WriteBlog());
+SkillRegistry.register(new WriteEmail());
