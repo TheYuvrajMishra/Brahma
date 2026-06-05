@@ -1,6 +1,8 @@
 import { MemoryManager } from './MemoryManager';
 import { LLMService } from '../services/LLMService';
 import { Logger } from './Logger';
+import { NormalizedMessage } from '../types/Message';
+import { ExecutionResult } from '../pipeline/Executor';
 
 export class ReflectionEngine {
     static async runCompressionCycle(): Promise<void> {
@@ -43,6 +45,33 @@ Return ONLY the new markdown format. Do not include markdown code block ticks.
             }
         } catch (error) {
             Logger.error('ReflectionEngine', 'system', error);
+        }
+    }
+
+    static async evaluateTask(message: NormalizedMessage, executionLog: ExecutionResult[], finalResponse: string): Promise<void> {
+        const startTime = Date.now();
+        const systemPrompt = `
+You are the Self-Reflection Engine for Brahma.
+Evaluate the recent task execution.
+Original Request: ${message.content}
+Execution Log: ${JSON.stringify(executionLog)}
+Final Response: ${finalResponse}
+
+Did we learn anything new about the user's preferences, constraints, or workflows that should be remembered for next time?
+If yes, output EXACTLY a single fact string.
+If no, output EXACTLY "NONE".
+        `.trim();
+
+        try {
+            const evaluation = await LLMService.chat(systemPrompt, 'Evaluate task.');
+            if (evaluation && evaluation.trim() !== "NONE") {
+                MemoryManager.appendZehnFact(evaluation.trim());
+                Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'LEARNED_FACT', { fact: evaluation.trim() });
+            } else {
+                Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'NO_NEW_LEARNINGS');
+            }
+        } catch (error) {
+            Logger.error('ReflectionEngine', message.message_id, error);
         }
     }
 }

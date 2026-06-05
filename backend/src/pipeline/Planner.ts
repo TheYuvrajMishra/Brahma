@@ -17,6 +17,7 @@ export class Planner {
         const plannerSchema = MemoryManager.getPlannerSchema();
         const hunar = MemoryManager.getHunar();
         const moment = MemoryManager.getMoment();
+        const zehn = MemoryManager.getZehn();
 
         const systemPrompt = `
 You are the Planner engine for an AI assistant.
@@ -28,8 +29,13 @@ ${plannerSchema}
 ### Available Skills (Tools)
 ${hunar}
 
-### Current Context
+### Current Context (Moment)
 ${moment}
+
+### Long-Term Context (Zehn)
+${zehn}
+
+**Memory-Weighted Planning Directive**: Bias your plan to use strategies and parameters that align with the user's past preferences found in the Long-Term Context.
 
 Return ONLY the JSON array matching the schema. No markdown ticks, no explanations.
         `.trim();

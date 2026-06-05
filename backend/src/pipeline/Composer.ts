@@ -31,9 +31,20 @@ CRITICAL INSTRUCTIONS:
 
             const responseText = await LLMService.chat(systemPrompt, `Original Request: ${message.content}\nSynthesize the final response.`);
             
+            const critiquePrompt = `
+You are an Internal Critique Engine for Brahma.
+Evaluate the following synthesized response for quality, tone (based on the soul), and directness.
+If the response uses generic AI boilerplate or fails to present information clearly, rewrite it to be better.
+If it is already excellent, reply EXACTLY with "PASS".
+Response to evaluate:
+${responseText}
+            `.trim();
+            const critiqueResponse = await LLMService.chat(critiquePrompt, "Evaluate and rewrite if necessary.");
+            const finalContent = (critiqueResponse && critiqueResponse.trim() !== "PASS") ? critiqueResponse : responseText;
+
             return {
                 originalMessage: message,
-                content: responseText || 'Failed to synthesize response.'
+                content: finalContent || 'Failed to synthesize response.'
             };
         }
 

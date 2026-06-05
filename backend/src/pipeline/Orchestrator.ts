@@ -8,6 +8,7 @@ import { Observer } from './Observer';
 import { Logger } from '../core/Logger';
 import { EventBus, SystemEvents } from '../core/EventBus';
 import { HealthServer } from '../core/HealthServer';
+import { ReflectionEngine } from '../core/ReflectionEngine';
 
 export class PipelineOrchestrator {
     private adapters: Adapter[] = [];
@@ -102,6 +103,13 @@ export class PipelineOrchestrator {
             EventBus.emit(SystemEvents.PIPELINE_COMPLETE, { message, response, totalTime });
             
             HealthServer.metrics.messagesProcessed++;
+            
+            // Phase 12: Self-Reflection Loop (Fire and forget)
+            if (routeResult.bucket === 'complex' && executionLog) {
+                ReflectionEngine.evaluateTask(message, executionLog, response.content).catch(err => {
+                    Logger.error('Pipeline', message.message_id, `Self-Reflection failed: ${err}`);
+                });
+            }
             
         } catch (error) {
             Logger.error('Pipeline', message.message_id, error);
