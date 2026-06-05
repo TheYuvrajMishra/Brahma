@@ -1,10 +1,10 @@
 # Moment: Session Memory
 ## Current Context
-- **Current Topic**: introductions
-- **Detected Tone**: Friendly
+- **Current Topic**: Unknown (LLM Fallback)
+- **Detected Tone**: Unknown
 - **Active Task**: None
 
 ## Recent Turns
-1. User: tell me my name
-2. User: my name is yuvraj
-3. User: hey
+1. [Empty]
+2. [Empty]
+3. User: why

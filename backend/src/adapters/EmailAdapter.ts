@@ -29,8 +29,8 @@ export class EmailAdapter implements Adapter {
         this.onMessageCallback = onMessage;
         
         if (this.gmail) {
-            console.log('[EmailAdapter] Initialized. Starting email polling...');
-            this.startPolling();
+            console.log('[EmailAdapter] Initialized. Email polling is disabled per user request.');
+            // this.startPolling();
         }
     }
 
