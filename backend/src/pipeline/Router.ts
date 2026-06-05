@@ -37,6 +37,15 @@ export class Router {
             };
         }
 
+        // 2.5 Force complex if action verb is explicitly used
+        if (hasActionVerb) {
+            return {
+                bucket: 'complex',
+                rule_matched: 'rule_action_verb',
+                confidence_score: 0.9
+            };
+        }
+
         // 3. LLM Fallback (Complex vs Simple)
         const systemPrompt = `
 You are an intent classifier for an AI assistant.

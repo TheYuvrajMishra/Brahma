@@ -40,14 +40,22 @@ CRITICAL INSTRUCTIONS:
             
             const critiquePrompt = `
 You are an Internal Critique Engine for Brahma.
-Evaluate the following synthesized response for quality, tone (based on the soul), and directness.
-If the response uses generic AI boilerplate or fails to present information clearly, rewrite it to be better.
-If it is already excellent, reply EXACTLY with "PASS".
+Check the following synthesized response for quality, tone, and directness.
+If the response uses generic AI boilerplate or fails to present information clearly, output ONLY the rewritten response. Do NOT include any explanations, rationales, or the word "Evaluation".
+If it is already excellent, output EXACTLY the word "PASS" and nothing else.
 Response to evaluate:
 ${responseText}
             `.trim();
-            const critiqueResponse = await LLMService.chat(critiquePrompt, "Evaluate and rewrite if necessary.");
-            const finalContent = (critiqueResponse && critiqueResponse.trim() !== "PASS") ? critiqueResponse : responseText;
+            const critiqueResponse = await LLMService.chat(critiquePrompt, "Output ONLY the rewrite, or PASS.");
+            
+            let finalContent = responseText;
+            if (critiqueResponse) {
+                const cleanCritique = critiqueResponse.trim();
+                // If it's not a pass and not empty, use the critique
+                if (cleanCritique !== "PASS" && cleanCritique !== '"PASS"' && !cleanCritique.endsWith("PASS")) {
+                    finalContent = cleanCritique;
+                }
+            }
 
             return {
                 originalMessage: message,

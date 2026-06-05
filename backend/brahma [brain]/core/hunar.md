@@ -4,6 +4,16 @@
 
 ## Available Skills
 
+### web_search
+- **Description**: Performs a web search using Tavily API to gather up-to-date information, news, or research on a given query.
+- **Parameters**: `query` (the search string)
+- **Output**: A text summary of search results.
+
+### llm_call
+- **Description**: Makes a generic call to the LLM to process text, answer general questions, analyze data, or synthesize information.
+- **Parameters**: `prompt` (the instruction for the LLM)
+- **Output**: The generated text response.
+
 ### write-email
 - **Description**: Drafts professional emails based on context.
 - **Parameters**: `sender_name`, `recipient`, `subject`, `tone`, `key_points`

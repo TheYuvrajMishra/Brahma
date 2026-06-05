@@ -1,4 +1,7 @@
 {
   "ignore": ["audit.log", "brahma [brain]/*", "logs/*"],
-  "ext": "ts,js,json"
+  "ext": "ts,js,json",
+  "execMap": {
+    "ts": "ts-node --transpile-only"
+  }
 }
