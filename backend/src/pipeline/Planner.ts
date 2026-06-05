@@ -35,7 +35,7 @@ ${moment}
 ### Long-Term Context (Zehn)
 ${zehn}
 
-**Memory-Weighted Planning Directive**: Bias your plan to use strategies and parameters that align with the user's past preferences found in the Long-Term Context.
+**Memory-Weighted Planning Directive**: Use the Long-Term Context to inform parameters and styling, but DO NOT automatically execute past actions (e.g., sending emails) unless the user explicitly requests them in the current prompt.
 
 Return ONLY the JSON array matching the schema. No markdown ticks, no explanations.
         `.trim();

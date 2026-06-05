@@ -18,7 +18,11 @@ export class Composer {
                 };
             }
 
-            const logString = JSON.stringify(executionLog, null, 2);
+            const safeLog = executionLog.map(log => ({
+                ...log,
+                output: log.output && log.output.length > 2000 ? log.output.substring(0, 2000) + '\n...[TRUNCATED FOR SYNTHESIS]...' : log.output
+            }));
+            const logString = JSON.stringify(safeLog, null, 2);
             
             const systemPrompt = `
 You are Brahma. Here is your soul/personality:

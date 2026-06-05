@@ -10,3 +10,7 @@
 3. User: research about foontro, which is freelancers marketplace
 4. User: research about foontro, which is freelancers marketplace
 5. User: send this research to my email, yuvraj17mishra11@gmail.com
+6. User: hi
+7. User: hey
+8. User: research about foontro.com
+9. User: i want elaborative research paper
