@@ -10,7 +10,14 @@ export class Composer {
     static async compose(message: NormalizedMessage, routeBucket: string, executionLog?: ExecutionResult[]): Promise<PipelineResponse> {
         let soul = MemoryManager.getSoul();
         
-        if (routeBucket === 'complex' && executionLog) {
+        if (routeBucket === 'complex') {
+            if (!executionLog) {
+                return {
+                    originalMessage: message,
+                    content: 'I understood that you wanted me to do a complex task, but I failed to generate a valid plan for it.'
+                };
+            }
+
             const logString = JSON.stringify(executionLog, null, 2);
             
             const systemPrompt = `
@@ -50,6 +57,7 @@ ${responseText}
 
         // Fast Reply Lane (Simple / Greeting)
         const moment = MemoryManager.getMoment();
+        const zehn = MemoryManager.getZehn();
         const systemPrompt = `
 You are Brahma. Here is your soul:
 ${soul}
@@ -57,7 +65,10 @@ ${soul}
 Here is the current conversation memory (Moment):
 ${moment}
 
-Respond to the user's message appropriately. Keep it concise and use the context from the memory to remember things like their name.
+Here is the long-term knowledge about the user (Zehn):
+${zehn}
+
+Respond to the user's message appropriately. Keep it concise and use the context from both memory types to remember things like their name and past preferences.
         `.trim();
 
         const responseText = await LLMService.chat(systemPrompt, message.content);

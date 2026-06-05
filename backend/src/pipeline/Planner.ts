@@ -51,10 +51,19 @@ Return ONLY the JSON array matching the schema. No markdown ticks, no explanatio
                     const cleanResponse = response.replace(/```(?:json)?/gi, '').trim();
                     const parsed = JSON.parse(cleanResponse);
                     
+                    // Unwrap object if JSON mode forced an object wrapper
+                    const planArray = Array.isArray(parsed) ? parsed : (parsed.plan || parsed.steps || Object.values(parsed)[0]);
+                    
                     // Basic validation
-                    if (Array.isArray(parsed) && parsed.every(s => s.step && s.action && s.tool && Array.isArray(s.depends_on))) {
-                        Logger.info('Planner', message.message_id, Date.now() - startTime, 'SUCCESS', { steps: parsed.length, attempt: attempts });
-                        return parsed;
+                    if (Array.isArray(planArray) && planArray.every((s: any) => s.step && s.action && s.tool)) {
+                        // Normalize missing fields
+                        planArray.forEach((s: any) => {
+                            if (!Array.isArray(s.depends_on)) s.depends_on = [];
+                            if (!s.params) s.params = {};
+                        });
+                        
+                        Logger.info('Planner', message.message_id, Date.now() - startTime, 'SUCCESS', { steps: planArray.length, attempt: attempts });
+                        return planArray;
                     } else {
                         throw new Error("Invalid schema shape");
                     }

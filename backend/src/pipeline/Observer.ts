@@ -23,14 +23,15 @@ Return ONLY the raw JSON, with no markdown ticks.
         `.trim();
 
         // We use the LLM to process tone and topic
-        let llmResponse = await LLMService.chat(systemPrompt, `Current Moment state:\n${currentMoment}\nNew Message: ${message.content}`);
+        let llmResponse = await LLMService.chat(systemPrompt, `Current Moment state:\n${currentMoment}\nNew Message: ${message.content}`, true);
 
         let updatedMoment = '';
         let newFacts: string[] = [];
 
         try {
             if (llmResponse) {
-                const parsed = JSON.parse(llmResponse);
+                const cleanResponse = llmResponse.replace(/```(?:json)?/gi, '').trim();
+                const parsed = JSON.parse(cleanResponse);
                 updatedMoment = parsed.updated_moment_markdown;
                 newFacts = parsed.new_long_term_facts || [];
             }
@@ -40,7 +41,10 @@ Return ONLY the raw JSON, with no markdown ticks.
 
         // Fallback if LLM fails or parsing fails
         if (!updatedMoment) {
-            updatedMoment = `
+            if (currentMoment.trim()) {
+                updatedMoment = currentMoment + `\n- User: ${message.content}`;
+            } else {
+                updatedMoment = `
 # Moment: Session Memory
 ## Current Context
 - **Current Topic**: Unknown (LLM Fallback)
@@ -51,7 +55,8 @@ Return ONLY the raw JSON, with no markdown ticks.
 1. [Empty]
 2. [Empty]
 3. User: ${message.content}
-            `.trim();
+                `.trim();
+            }
         }
 
         MemoryManager.updateMoment(updatedMoment);

@@ -9,6 +9,11 @@
 - **Parameters**: `sender_name`, `recipient`, `subject`, `tone`, `key_points`
 - **Output**: Plain text email body.
 
+### send-email
+- **Description**: Actually sends/dispatches an email to a recipient using Gmail.
+- **Parameters**: `recipient` (email address), `subject` (string), `body` (string)
+- **Output**: Success or failure confirmation string.
+
 ### write-blog
 - **Description**: Produces structured blog posts.
 - **Parameters**: `topic`, `tone`, `length`, `keywords`

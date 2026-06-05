@@ -3,6 +3,7 @@ import { Logger } from './Logger';
 import { WebSearch } from '../skills/WebSearch';
 import { LlmCall } from '../skills/LlmCall';
 import { WriteBlog, WriteEmail } from '../skills/Writers';
+import { SendEmail } from '../skills/SendEmail';
 
 class SkillRegistryClass {
     private skills: Map<string, ISkill> = new Map();
@@ -28,3 +29,4 @@ SkillRegistry.register(new WebSearch());
 SkillRegistry.register(new LlmCall());
 SkillRegistry.register(new WriteBlog());
 SkillRegistry.register(new WriteEmail());
+SkillRegistry.register(new SendEmail());

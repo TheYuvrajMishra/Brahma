@@ -26,7 +26,7 @@ export class Router {
 
         // 2. Rules: Simple constraints
         const words = text.split(/\s+/);
-        const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build'];
+        const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
         if (words.length <= 6 && !hasActionVerb) {
@@ -51,7 +51,8 @@ Respond ONLY with a JSON object in this format:
         try {
             const llmResponse = await LLMService.chat(systemPrompt, message.content, true);
             if (llmResponse) {
-                const parsed = JSON.parse(llmResponse);
+                const cleanResponse = llmResponse.replace(/```(?:json)?/gi, '').trim();
+                const parsed = JSON.parse(cleanResponse);
                 if (parsed.bucket === 'simple' || parsed.bucket === 'complex') {
                     return {
                         bucket: parsed.bucket,
