@@ -9,4 +9,4 @@
 2. User: send a mail to yuvrajmishra594@gmail.com , saying hello
 3. User: research about foontro, which is freelancers marketplace
 4. User: research about foontro, which is freelancers marketplace
-- User: send this research to my email, yuvraj17mishra11@gmail.com
+5. User: send this research to my email, yuvraj17mishra11@gmail.com

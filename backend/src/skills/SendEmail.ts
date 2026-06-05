@@ -8,7 +8,12 @@ export class SendEmail implements ISkill {
     async execute(params: any): Promise<string> {
         const recipient = params.recipient;
         const subject = params.subject || 'No Subject';
-        const body = params.body || '';
+        let body = params.body || '';
+
+        if (params._dependency_context) {
+            // Include outputs from previous steps so the LLM doesn't just email "{{summary}}"
+            body += '\n\n' + params._dependency_context;
+        }
 
         if (!recipient) {
             return 'Failed to send email: No recipient provided.';

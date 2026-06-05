@@ -48,7 +48,11 @@ Return ONLY the JSON array matching the schema. No markdown ticks, no explanatio
             try {
                 const response = await LLMService.chat(systemPrompt, message.content, true);
                 if (response) {
-                    const cleanResponse = response.replace(/```(?:json)?/gi, '').trim();
+                    let cleanResponse = response;
+                    const jsonMatch = cleanResponse.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        cleanResponse = jsonMatch[0];
+                    }
                     const parsed = JSON.parse(cleanResponse);
                     
                     // Unwrap object if JSON mode forced an object wrapper
