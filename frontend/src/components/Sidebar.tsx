@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import type { Session } from '../types';
 
 interface SidebarProps {
@@ -11,6 +12,7 @@ interface SidebarProps {
     createNewSession: () => void;
     switchSession: (id: string) => void;
     deleteSession: (id: string) => void;
+    activePage?: 'playground' | 'context' | 'logs';
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -23,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     createNewSession,
     switchSession,
     deleteSession,
+    activePage = 'playground',
 }) => {
     // ── Time formatter ────────────────────────────────────────────────
     const formatTime = (dateStr: string) => {
@@ -40,8 +43,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
             {/* Sidebar Header */}
             <div className="sidebar-header">
-                <h2 className="sidebar-title">[ SESSION_DATA ]</h2>
+                <h2 className="sidebar-title">[ TELEMETRY_CONTROL ]</h2>
                 <button onClick={() => setSidebarOpen(false)} className="sidebar-close-btn" title="CLOSE_PANEL">✕</button>
+            </div>
+
+            {/* Navigation Group */}
+            <div className="nav-group">
+                <Link to="/playground" className={`nav-link ${activePage === 'playground' ? 'nav-active' : ''}`}>
+                    [01] CHAT_PLAYGROUND
+                </Link>
+                <Link to="/context" className={`nav-link ${activePage === 'context' ? 'nav-active' : ''}`}>
+                    [02] CONTEXT_CORE
+                </Link>
+                <Link to="/logs" className={`nav-link ${activePage === 'logs' ? 'nav-active' : ''}`}>
+                    [03] AUDIT_TELEMETRY
+                </Link>
             </div>
 
             {/* New Chat Button */}

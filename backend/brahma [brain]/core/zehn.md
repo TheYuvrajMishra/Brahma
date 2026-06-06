@@ -1,12 +1,13 @@
 ## Core Facts (Importance > 0.8)
-* Name: Yuvraj
+* User's name: Yuvraj
 * Preferred mode: light mode
-* Primary email: yuvraj17mishra11@gmail.com
+* Primary email address: yuvraj17mishra11@gmail.com
 * Active projects: Foontro, Brahma
-* Last active: 2026-06-06T15:31:41.718Z
+* Foontro: freelance marketplace for businesses and verified freelancers in India
 
 ## Contextual Notes (Importance < 0.8)
-* Interested in Foontro and job opportunities
+* Open to receiving emails
 * Romantic interest: Savaya (email: savayashikha571@gmail.com)
-* Tone preference for affection: informal and enthusiastic 
-* Received email summary on 2026-06-06T15:45:11.394Z
+* Tone preference for affection: informal and enthusiastic
+* Has a Gmail account and wants to access inbox
+* Prefers a simple "hello" message in Discord

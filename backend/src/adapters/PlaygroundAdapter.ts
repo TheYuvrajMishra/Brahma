@@ -2,9 +2,11 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import path from 'path';
+import fs from 'fs';
 import { Adapter } from './Adapter';
 import { NormalizedMessage, PipelineResponse } from '../types/Message';
 import { ChatSession } from '../models/ChatSession';
+import { config } from '../config';
 
 export class PlaygroundAdapter implements Adapter {
     private io: Server;
@@ -24,6 +26,86 @@ export class PlaygroundAdapter implements Adapter {
 
         this.io.on('connection', (socket) => {
             console.log(`[Playground] User connected: ${socket.id}`);
+
+            // ── Brain File Management Events ───────────────────────────
+
+            socket.on('brain:list', async (callback?: (data: any) => void) => {
+                try {
+                    const dirPath = config.brainPath;
+                    if (!fs.existsSync(dirPath)) {
+                        if (callback) callback({ success: false, error: 'Brain directory does not exist' });
+                        return;
+                    }
+                    const files = fs.readdirSync(dirPath);
+                    const markdownFiles = files.filter(f => f.endsWith('.md'));
+                    if (callback) callback({ success: true, files: markdownFiles });
+                } catch (err) {
+                    console.error('[Playground] brain:list failed:', err);
+                    if (callback) callback({ success: false, error: String(err) });
+                }
+            });
+
+            socket.on('brain:read', async (filename: string, callback?: (data: any) => void) => {
+                try {
+                    const safeName = path.basename(filename);
+                    if (!safeName.endsWith('.md')) {
+                        if (callback) callback({ success: false, error: 'Only markdown files are allowed' });
+                        return;
+                    }
+                    const filePath = path.join(config.brainPath, safeName);
+                    if (!fs.existsSync(filePath)) {
+                        if (callback) callback({ success: false, error: 'File not found' });
+                        return;
+                    }
+                    const content = fs.readFileSync(filePath, 'utf-8');
+                    if (callback) callback({ success: true, content });
+                } catch (err) {
+                    console.error('[Playground] brain:read failed:', err);
+                    if (callback) callback({ success: false, error: String(err) });
+                }
+            });
+
+            socket.on('brain:write', async (data: { filename: string; content: string }, callback?: (data: any) => void) => {
+                try {
+                    const safeName = path.basename(data.filename);
+                    if (!safeName.endsWith('.md')) {
+                        if (callback) callback({ success: false, error: 'Only markdown files can be updated' });
+                        return;
+                    }
+                    const filePath = path.join(config.brainPath, safeName);
+                    fs.writeFileSync(filePath, data.content, 'utf-8');
+                    console.log(`[Playground] Updated brain file: ${safeName}`);
+                    if (callback) callback({ success: true });
+                } catch (err) {
+                    console.error('[Playground] brain:write failed:', err);
+                    if (callback) callback({ success: false, error: String(err) });
+                }
+            });
+
+            // ── Telemetry / Audit Logs Events ───────────────────────────
+
+            socket.on('logs:read', async (callback?: (data: any) => void) => {
+                try {
+                    const logPath = path.join(__dirname, '../../audit.log');
+                    if (!fs.existsSync(logPath)) {
+                        if (callback) callback({ success: true, logs: [] });
+                        return;
+                    }
+                    const content = fs.readFileSync(logPath, 'utf-8');
+                    const lines = content.split('\n').filter(l => l.trim() !== '');
+                    const logs = lines.map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch {
+                            return { timestamp: new Date().toISOString(), level: 'INFO', details: line };
+                        }
+                    });
+                    if (callback) callback({ success: true, logs: logs.reverse().slice(0, 100) });
+                } catch (err) {
+                    console.error('[Playground] logs:read failed:', err);
+                    if (callback) callback({ success: false, error: String(err) });
+                }
+            });
 
             // ── Session CRUD Events ─────────────────────────────────────
 
