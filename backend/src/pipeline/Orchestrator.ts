@@ -127,9 +127,11 @@ export class PipelineOrchestrator {
             
             // Phase 12: Self-Reflection Loop (Fire and forget)
             if (routeResult.bucket === 'complex' && executionLog) {
-                ReflectionEngine.evaluateTask(message, executionLog, response.content).catch(err => {
-                    Logger.error('Pipeline', message.message_id, `Self-Reflection failed: ${err}`);
-                });
+                ReflectionEngine.evaluateTask(message, executionLog, response.content)
+                    .then(() => ReflectionEngine.runCompressionCycle())
+                    .catch(err => {
+                        Logger.error('Pipeline', message.message_id, `Self-Reflection failed: ${err}`);
+                    });
             }
             
         } catch (error) {

@@ -58,15 +58,21 @@ Execution Log: ${JSON.stringify(executionLog)}
 Final Response: ${finalResponse}
 
 Did we learn anything new about the user's preferences, constraints, or workflows that should be remembered for next time?
-If yes, output EXACTLY a single fact string.
-If no, output EXACTLY "NONE".
+MANDATORY: Output ONLY a single-sentence fact if yes, or "NONE" if no.
+Do NOT include markdown formatting, bullet points, headers, or any introductory conversational text.
         `.trim();
 
         try {
             const evaluation = await LLMService.chat(systemPrompt, 'Evaluate task.');
-            if (evaluation && evaluation.trim() !== "NONE") {
-                MemoryManager.appendZehnFact(evaluation.trim());
-                Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'LEARNED_FACT', { fact: evaluation.trim() });
+            let cleaned = (evaluation || '').trim();
+            
+            // Clean up headers or markdown prefixes
+            cleaned = cleaned.replace(/^(##|###|\*|-)\s*/g, '');
+            cleaned = cleaned.replace(/^Fact:\s*/i, '');
+            
+            if (cleaned && cleaned.toLowerCase() !== "none" && !cleaned.toLowerCase().includes("task evaluation") && cleaned.split('\n').length <= 2) {
+                MemoryManager.appendZehnFact(cleaned);
+                Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'LEARNED_FACT', { fact: cleaned });
             } else {
                 Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'NO_NEW_LEARNINGS');
             }

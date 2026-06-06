@@ -24,6 +24,11 @@
 - **Parameters**: `recipient` (email address), `subject` (string), `body` (string)
 - **Output**: Success or failure confirmation string.
 
+### get-emails
+- **Description**: Retrieves a list of recent emails from the inbox with their details.
+- **Parameters**: `max_results` (number of emails to retrieve, default: 5), `query` (optional Gmail search query filter string)
+- **Output**: A concatenated string of email summaries including ID, From, Date, Subject, Snippet, and Body content.
+
 ### write-blog
 - **Description**: Produces structured blog posts.
 - **Parameters**: `topic`, `tone`, `length`, `keywords`

@@ -1,5 +1,6 @@
 import { NormalizedMessage } from '../types/Message';
 import { LLMService } from '../services/LLMService';
+import { MemoryManager } from '../core/MemoryManager';
 
 export interface RouteResult {
     bucket: 'greeting' | 'simple' | 'complex';
@@ -37,7 +38,12 @@ export class Router {
         const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
-        if (words.length <= 6 && !hasActionVerb) {
+        const moment = MemoryManager.getMoment();
+        const hasActiveTask = /active task:\s*(?!none\b)\w+/i.test(moment);
+        const confirmationWords = ['yes', 'confirm', 'yup', 'do it', 'go ahead', 'sure', 'ok', 'okay', 'yep', 'y', 'correct'];
+        const isConfirmation = confirmationWords.includes(text) || confirmationWords.some(word => text.startsWith(word));
+
+        if (words.length <= 6 && !hasActionVerb && !hasActiveTask && !isConfirmation) {
             return {
                 bucket: 'simple',
                 rule_matched: 'rule_length_and_verbs',
@@ -57,16 +63,19 @@ export class Router {
         // 3. LLM Fallback (Complex vs Simple)
         const systemPrompt = `
 You are an intent classifier for an AI assistant.
-Classify the following user message into exactly one of these two buckets:
+Classify the user's message into exactly one of these two buckets:
 - "simple": A straightforward question, casual chat, or query that does NOT require multi-step planning.
 - "complex": A task that requires multi-step planning, research, executing tools, or writing a detailed report.
+
+### Context (Current Conversation Memory)
+${moment}
 
 Respond ONLY with a JSON object in this format:
 {"bucket": "simple" | "complex", "confidence": <float between 0 and 1>}
         `.trim();
 
         try {
-            const llmResponse = await LLMService.chat(systemPrompt, message.content, true);
+            const llmResponse = await LLMService.chat(systemPrompt, `User Message: ${message.content}\nClassify the intent based on context.`, true);
             if (llmResponse) {
                 const cleanResponse = llmResponse.replace(/```(?:json)?/gi, '').trim();
                 const parsed = JSON.parse(cleanResponse);

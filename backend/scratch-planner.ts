@@ -29,7 +29,7 @@ async function run() {
         platform: 'cli',
         channel_id: 'test',
         user_id: 'test',
-        content: 'send this research to my email, yuvraj17mishra11@gmail.com',
+        content: 'i want you to summarize my last 5 emails and tell me whats happening in there',
         timestamp: new Date()
     };
 

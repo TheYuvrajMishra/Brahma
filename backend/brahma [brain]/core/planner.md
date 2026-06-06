@@ -78,3 +78,27 @@ The Planner must output a validated JSON array of step objects:
   }
 ]
 ```
+
+### Example 3: Email Inbox Summarization
+```json
+[
+  {
+    "step": 1,
+    "action": "get_emails",
+    "tool": "get-emails",
+    "params": {
+      "max_results": 5
+    },
+    "depends_on": []
+  },
+  {
+    "step": 2,
+    "action": "summarize_emails",
+    "tool": "llm_call",
+    "params": {
+      "prompt_template": "summarize_inbox"
+    },
+    "depends_on": [1]
+  }
+]
+```
