@@ -117,7 +117,7 @@ export class PipelineOrchestrator {
 
             // Append assistant response to moment.md for dialogue context
             try {
-                const momentContent = MemoryManager.getMoment();
+                const momentContent = await MemoryManager.getMoment(message.channel_id);
                 if (momentContent.includes('## Recent Turns')) {
                     const parts = momentContent.split('## Recent Turns');
                     const recentTurnsText = parts[1].trim();
@@ -137,7 +137,7 @@ export class PipelineOrchestrator {
                     });
                     
                     const newMoment = parts[0] + '## Recent Turns\n' + renumbered.join('\n');
-                    MemoryManager.updateMoment(newMoment);
+                    await MemoryManager.updateMoment(newMoment, message.channel_id);
                 }
             } catch (err) {
                 console.error('Failed to append assistant response to moment.md:', err);

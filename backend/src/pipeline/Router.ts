@@ -38,7 +38,7 @@ export class Router {
         const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
-        const moment = MemoryManager.getMoment();
+        const moment = await MemoryManager.getMoment(message.channel_id);
         const hasActiveTask = /active task:\s*(?!none\b)\w+/i.test(moment);
         const confirmationWords = ['yes', 'confirm', 'yup', 'do it', 'go ahead', 'sure', 'ok', 'okay', 'yep', 'y', 'correct'];
         const isNumber = /^\d+$/.test(text);

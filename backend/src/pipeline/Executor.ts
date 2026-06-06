@@ -54,7 +54,13 @@ export class Executor {
                     const interpolatedParams = this.interpolateParams(step.params, results);
 
                     // Inject context into params so the tool can see what happened before it
-                    const paramsToRun = { ...interpolatedParams, _dependency_context: depOutputs };
+                    const paramsToRun = { 
+                        ...interpolatedParams, 
+                        _dependency_context: depOutputs,
+                        _channel_id: message.channel_id,
+                        _platform: message.platform,
+                        _user_id: message.user_id
+                    };
                     
                     output = await SkillRegistry.runSkill(step.tool, paramsToRun);
                     

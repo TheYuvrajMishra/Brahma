@@ -6,7 +6,7 @@ import { Logger } from '../core/Logger';
 export class Observer {
     static async observe(message: NormalizedMessage): Promise<void> {
         const startTime = Date.now();
-        const currentMoment = MemoryManager.getMoment();
+        const currentMoment = await MemoryManager.getMoment(message.channel_id);
 
         const systemPrompt = `
 You are the Observer engine for an AI assistant.
@@ -61,7 +61,7 @@ Return ONLY the raw JSON, with no markdown ticks.
             }
         }
 
-        MemoryManager.updateMoment(updatedMoment);
+        await MemoryManager.updateMoment(updatedMoment, message.channel_id);
         
         for (const fact of newFacts) {
             MemoryManager.appendZehnFact(fact);

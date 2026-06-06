@@ -17,7 +17,7 @@ export class Planner {
         const startTime = Date.now();
         const plannerSchema = MemoryManager.getPlannerSchema();
         const hunar = MemoryManager.getHunar();
-        const moment = MemoryManager.getMoment();
+        const moment = await MemoryManager.getMoment(message.channel_id);
         const zehn = MemoryManager.getZehn();
 
         // Build SCRP context injection if research was performed

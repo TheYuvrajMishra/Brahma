@@ -9,7 +9,7 @@ export class Composer {
      * Phase 8: Final Synthesis
      */
     static async compose(message: NormalizedMessage, routeBucket: string, executionLog?: ExecutionResult[], researchResult?: ResearchResult): Promise<PipelineResponse> {
-        let soul = MemoryManager.getSoul();
+        let soul = await MemoryManager.getSoul(message.channel_id);
         
         if (routeBucket === 'complex') {
             if (!executionLog) {
@@ -77,7 +77,7 @@ CRITICAL INSTRUCTIONS:
         }
 
         // Fast Reply Lane (Simple / Greeting)
-        const moment = MemoryManager.getMoment();
+        const moment = await MemoryManager.getMoment(message.channel_id);
         const zehn = MemoryManager.getZehn();
         const researchCtx = this.formatResearchContext(researchResult);
         const systemPrompt = `

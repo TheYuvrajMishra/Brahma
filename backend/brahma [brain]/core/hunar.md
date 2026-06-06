@@ -53,3 +53,8 @@
 - **Description**: Creates a new text or voice channel in the active Discord guild.
 - **Parameters**: `name` (the channel name string, required), `type` (the channel type, e.g. "text" or "voice", default: "text")
 - **Output**: Confirmation string indicating channel creation status.
+
+### set-persona
+- **Description**: Updates the bot's persona for the current chat session or Discord channel context.
+- **Parameters**: `persona_description` (description of the target persona style/identity to adopt, e.g. "Salman Khan / Sallu Bhai", or "Brahma" to reset to default, required)
+- **Output**: Confirmation string indicating persona adaptation status.

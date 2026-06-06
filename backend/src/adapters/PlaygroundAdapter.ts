@@ -208,7 +208,7 @@ export class PlaygroundAdapter implements Adapter {
                 const normalizedMsg: NormalizedMessage = {
                     message_id: messageId,
                     platform: 'playground',
-                    channel_id: socket.id,
+                    channel_id: sessionId || socket.id,
                     user_id: socket.id,
                     content: msgText,
                     timestamp: new Date()
