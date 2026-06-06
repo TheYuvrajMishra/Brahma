@@ -1,131 +1,286 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import './App.css';
 
 interface Message {
-    id: string;
-    sender: 'You' | 'Brahma Core';
-    text: string;
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+}
+
+interface Session {
+    sessionId: string;
+    title: string;
+    updatedAt: string;
 }
 
 export default function App() {
     const [socket, setSocket] = useState<any>(null);
     const [connected, setConnected] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([
-        { id: '1', sender: 'Brahma Core', text: 'Welcome to the Playground. I am online and ready to execute.' }
-    ]);
+    const [sessions, setSessions] = useState<Session[]>([]);
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
+    // ── Socket Setup ──────────────────────────────────────────────────
     useEffect(() => {
-        // Connect to the backend socket
         const newSocket = io('http://127.0.0.1:3005');
         setSocket(newSocket);
 
-        newSocket.on('connect', () => {
-            console.log('Connected to backend');
-            setConnected(true);
-        });
-        newSocket.on('disconnect', () => {
-            console.log('Disconnected from backend');
-            setConnected(false);
-        });
-        newSocket.on('connect_error', (err) => {
-            console.error('Socket connection error:', err);
-        });
+        newSocket.on('connect', () => { setConnected(true); });
+        newSocket.on('disconnect', () => { setConnected(false); });
+        newSocket.on('connect_error', (err: any) => { console.error('Socket error:', err); });
 
-        newSocket.on('typing', (typingState: boolean) => {
-            setIsTyping(typingState);
-        });
+        newSocket.on('typing', (state: boolean) => { setIsTyping(state); });
 
         newSocket.on('chat response', (msg: string) => {
-            setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'Brahma Core', text: msg }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: msg, timestamp: new Date().toISOString() }]);
         });
 
-        return () => {
-            newSocket.disconnect();
-        };
+        newSocket.on('session:updated', (data: { sessionId: string; title: string }) => {
+            setSessions(prev => prev.map(s => s.sessionId === data.sessionId ? { ...s, title: data.title } : s));
+        });
+
+        return () => { newSocket.disconnect(); };
     }, []);
 
+    // ── Load sessions on connect ──────────────────────────────────────
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (!socket || !connected) return;
+        loadSessions();
+    }, [socket, connected]);
+
+    const loadSessions = useCallback(() => {
+        if (!socket) return;
+        socket.emit('session:list', (data: any) => {
+            if (data.success && data.sessions.length > 0) {
+                setSessions(data.sessions);
+                // Auto-select the most recent session if none is active
+                setActiveSessionId(prev => {
+                    const exists = data.sessions.find((s: Session) => s.sessionId === prev);
+                    if (exists) return prev;
+                    return data.sessions[0].sessionId;
+                });
+            } else {
+                // No sessions exist — create one
+                createNewSession();
+            }
+        });
+    }, [socket]);
+
+    // ── Load messages when active session changes ─────────────────────
+    useEffect(() => {
+        if (!socket || !activeSessionId) return;
+        socket.emit('session:load', activeSessionId, (data: any) => {
+            if (data.success) {
+                setMessages(data.messages || []);
+            } else {
+                setMessages([]);
+            }
+        });
+        inputRef.current?.focus();
+    }, [socket, activeSessionId]);
+
+    // ── Auto-scroll ───────────────────────────────────────────────────
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isTyping]);
 
+    // ── Session Actions ───────────────────────────────────────────────
+    const createNewSession = useCallback(() => {
+        if (!socket) return;
+        socket.emit('session:create', (data: any) => {
+            if (data.success) {
+                const newSession: Session = {
+                    sessionId: data.sessionId,
+                    title: data.title || 'New Chat',
+                    updatedAt: new Date().toISOString(),
+                };
+                setSessions(prev => [newSession, ...prev]);
+                setActiveSessionId(data.sessionId);
+                setMessages([]);
+            }
+        });
+    }, [socket]);
+
+    const deleteSession = useCallback((sessionId: string) => {
+        if (!socket) return;
+        socket.emit('session:delete', sessionId, (data: any) => {
+            if (data.success) {
+                setSessions(prev => {
+                    const remaining = prev.filter(s => s.sessionId !== sessionId);
+                    // If we deleted the active session, switch to next or create new
+                    if (activeSessionId === sessionId) {
+                        if (remaining.length > 0) {
+                            setActiveSessionId(remaining[0].sessionId);
+                        } else {
+                            // Create a new session since we deleted the last one
+                            setTimeout(() => createNewSession(), 100);
+                        }
+                    }
+                    return remaining;
+                });
+                setDeleteConfirm(null);
+            }
+        });
+    }, [socket, activeSessionId, createNewSession]);
+
+    const switchSession = useCallback((sessionId: string) => {
+        if (sessionId === activeSessionId) return;
+        setActiveSessionId(sessionId);
+        setIsTyping(false);
+    }, [activeSessionId]);
+
+    // ── Send Message ──────────────────────────────────────────────────
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const text = inputValue.trim();
-        if (text && socket) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'You', text }]);
-            socket.emit('chat message', text);
-            setInputValue('');
-        }
+        if (!text || !socket || !activeSessionId) return;
+
+        setMessages(prev => [...prev, { role: 'user', content: text, timestamp: new Date().toISOString() }]);
+        socket.emit('chat message', { text, sessionId: activeSessionId });
+        setInputValue('');
     };
 
+    // ── Time formatter ────────────────────────────────────────────────
+    const formatTime = (dateStr: string) => {
+        const diff = Date.now() - new Date(dateStr).getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 1) return 'Just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        const days = Math.floor(hrs / 24);
+        return `${days}d ago`;
+    };
+
+    // ── Render ────────────────────────────────────────────────────────
     return (
-        <div className="h-screen w-full bg-pink-100 flex flex-col items-center justify-center p-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <div className="app-container" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             
-            {/* Header */}
-            <div className="w-full max-w-4xl flex items-center justify-between bg-yellow-300 border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] p-4 mb-6">
-                <h1 className="text-3xl font-bold uppercase tracking-tight">Brahma Playground</h1>
-                <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full border-2 border-black ${connected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                    <span className="font-bold">{connected ? 'Connected' : 'Disconnected'}</span>
+            {/* Sidebar */}
+            <div className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+                {/* Sidebar Header */}
+                <div className="sidebar-header">
+                    <h2 className="sidebar-title">Sessions</h2>
+                    <button onClick={() => setSidebarOpen(false)} className="sidebar-close-btn" title="Close sidebar">✕</button>
+                </div>
+
+                {/* New Chat Button */}
+                <button onClick={createNewSession} className="new-chat-btn">
+                    + New Chat
+                </button>
+
+                {/* Session List */}
+                <div className="session-list">
+                    {sessions.map(session => (
+                        <div
+                            key={session.sessionId}
+                            className={`session-item ${session.sessionId === activeSessionId ? 'session-active' : ''}`}
+                            onClick={() => switchSession(session.sessionId)}
+                        >
+                            <div className="session-info">
+                                <p className="session-title">{session.title}</p>
+                                <p className="session-time">{formatTime(session.updatedAt)}</p>
+                            </div>
+                            {deleteConfirm === session.sessionId ? (
+                                <div className="delete-confirm">
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); deleteSession(session.sessionId); }}
+                                        className="delete-yes"
+                                    >✓</button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                                        className="delete-no"
+                                    >✕</button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.sessionId); }}
+                                    className="delete-btn"
+                                    title="Delete session"
+                                >🗑</button>
+                            )}
+                        </div>
+                    ))}
                 </div>
             </div>
 
-            {/* Chat Container */}
-            <div className="w-full max-w-4xl flex-1 bg-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden mb-6">
-                
-                {/* Messages Area */}
-                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-cyan-100">
-                    {messages.map((msg) => (
-                        <div key={msg.id} className={`flex flex-col ${msg.sender === 'You' ? 'items-end' : 'items-start'}`}>
-                            <div className={`
-                                border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] p-4 max-w-[80%] 
-                                ${msg.sender === 'You' ? 'bg-white rounded-bl-2xl rounded-tl-2xl rounded-tr-2xl' : 'bg-yellow-200 rounded-br-2xl rounded-tr-2xl rounded-tl-2xl'}
-                            `}>
-                                <p className="font-bold mb-2 text-sm uppercase opacity-70 text-black">{msg.sender}</p>
-                                <div className="prose prose-sm max-w-none text-black">
-                                    {msg.sender === 'Brahma Core' ? (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
-                                    ) : (
-                                        <p className="whitespace-pre-wrap">{msg.text}</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    
-                    <div ref={messagesEndRef} />
+            {/* Main Chat Area */}
+            <div className="main-area">
+                {/* Header */}
+                <div className="chat-header">
+                    {!sidebarOpen && (
+                        <button onClick={() => setSidebarOpen(true)} className="menu-btn" title="Open sidebar">☰</button>
+                    )}
+                    <h1 className="header-title">Brahma Playground</h1>
+                    <div className="connection-status">
+                        <div className={`status-dot ${connected ? 'status-online' : 'status-offline'}`}></div>
+                        <span className="status-text">{connected ? 'Connected' : 'Disconnected'}</span>
+                    </div>
                 </div>
 
-                {/* Typing Indicator */}
-                {isTyping && (
-                    <div className="px-6 py-2 bg-cyan-100 border-t-4 border-black">
-                        <p className="font-bold animate-pulse text-sm text-black">Brahma is thinking...</p>
+                {/* Chat Container */}
+                <div className="chat-container">
+                    {/* Messages */}
+                    <div className="messages-area">
+                        {messages.length === 0 && (
+                            <div className="empty-state">
+                                <p className="empty-title">Start a conversation</p>
+                                <p className="empty-subtitle">Type a message below to begin.</p>
+                            </div>
+                        )}
+                        {messages.map((msg, i) => (
+                            <div key={i} className={`message-row ${msg.role === 'user' ? 'message-user' : 'message-assistant'}`}>
+                                <div className={`message-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'}`}>
+                                    <p className="message-sender">{msg.role === 'user' ? 'You' : 'Brahma Core'}</p>
+                                    <div className="message-content prose prose-sm max-w-none">
+                                        {msg.role === 'assistant' ? (
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                        ) : (
+                                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        
+                        {isTyping && (
+                            <div className="message-row message-assistant">
+                                <div className="typing-indicator">
+                                    <span className="typing-dot"></span>
+                                    <span className="typing-dot"></span>
+                                    <span className="typing-dot"></span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
                     </div>
-                )}
 
-                {/* Input Area */}
-                <form onSubmit={handleSubmit} className="bg-white border-t-4 border-black p-4 flex gap-4">
-                    <input 
-                        type="text" 
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        className="flex-1 border-4 border-black p-3 font-bold focus:outline-none focus:bg-pink-100 transition-colors shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                        placeholder="Enter your command..."
-                        autoComplete="off"
-                    />
-                    <button 
-                        type="submit" 
-                        className="bg-blue-500 hover:bg-blue-400 text-white font-bold px-8 py-3 border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] uppercase tracking-wider transition-transform active:translate-x-1 active:translate-y-1 active:shadow-none cursor-pointer"
-                    >
-                        Send
-                    </button>
-                </form>
+                    {/* Input */}
+                    <form onSubmit={handleSubmit} className="input-area">
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            className="chat-input"
+                            placeholder="Enter your command..."
+                            autoComplete="off"
+                        />
+                        <button type="submit" className="send-btn">
+                            Send
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     );

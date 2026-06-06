@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { PipelineOrchestrator } from './src/pipeline/Orchestrator';
 import { DiscordAdapter } from './src/adapters/DiscordAdapter';
 import { PlaygroundAdapter } from './src/adapters/PlaygroundAdapter';
@@ -8,6 +9,16 @@ import cron from 'node-cron';
 
 async function bootstrap() {
     console.log('Starting Brahma Pipeline (Phase 1)...');
+
+    // Connect to MongoDB
+    const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/brahma';
+    try {
+        await mongoose.connect(mongoUri);
+        console.log(`[MongoDB] Connected to ${mongoUri}`);
+    } catch (err) {
+        console.error('[MongoDB] Connection failed:', err);
+        process.exit(1);
+    }
 
     // Start Health & Metrics Server (Phase 11)
     const healthServer = new HealthServer();
