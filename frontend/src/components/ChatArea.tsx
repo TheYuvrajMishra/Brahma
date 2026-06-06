@@ -2,6 +2,7 @@ import React, { type RefObject } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message } from '../types';
+import { TypewriterMarkdown } from './TypewriterMarkdown';
 
 interface ChatAreaProps {
     sidebarOpen: boolean;
@@ -60,7 +61,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                 <p className="message-sender">{msg.role === 'user' ? '< USR_INPUT >' : '< SYS_OUTPUT >'}</p>
                                 <div className="message-content prose prose-sm max-w-none">
                                     {msg.role === 'assistant' ? (
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                        msg.isNew ? (
+                                            <TypewriterMarkdown content={msg.content} />
+                                        ) : (
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                        )
                                     ) : (
                                         <p className="whitespace-pre-wrap">{msg.content}</p>
                                     )}

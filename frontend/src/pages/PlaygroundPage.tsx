@@ -31,7 +31,7 @@ export const PlaygroundPage: React.FC = () => {
         newSocket.on('typing', (state: boolean) => { setIsTyping(state); });
 
         newSocket.on('chat response', (msg: string) => {
-            setMessages(prev => [...prev, { role: 'assistant', content: msg, timestamp: new Date().toISOString() }]);
+            setMessages(prev => [...prev, { role: 'assistant', content: msg, timestamp: new Date().toISOString(), isNew: true }]);
         });
 
         newSocket.on('session:updated', (data: { sessionId: string; title: string }) => {

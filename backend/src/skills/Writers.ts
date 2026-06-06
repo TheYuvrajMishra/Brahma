@@ -16,12 +16,10 @@ You are an expert copywriter. Write a blog post about "${topic}".
 Tone: ${tone}
 Keywords to include: ${keywords}
 Format the output in clean Markdown.
-
-Use the following research context to write the blog post:
-${context}
+${context ? `\nUse the following research context to write the blog post:\n${context}` : ''}
         `.trim();
 
-        const response = await LLMService.chat(systemPrompt, 'Generate the blog post based on the research context.');
+        const response = await LLMService.chat(systemPrompt, 'Generate the blog post.');
         return response || 'Failed to generate blog post.';
     }
 }
@@ -41,12 +39,10 @@ You are an expert email drafter. Write an email to ${recipient}.
 Subject: ${subject}
 Key Points to include: ${key_points}
 Format the output professionally.
-
-Use the following research context to write the email:
-${context}
+${context ? `\nUse the following research context to write the email:\n${context}` : ''}
         `.trim();
 
-        const response = await LLMService.chat(systemPrompt, 'Generate the email based on the research context.');
+        const response = await LLMService.chat(systemPrompt, 'Generate the email based on the provided instructions.');
         return response || 'Failed to generate email.';
     }
 }
