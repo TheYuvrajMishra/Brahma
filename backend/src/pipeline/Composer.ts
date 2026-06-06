@@ -53,6 +53,7 @@ CRITICAL INSTRUCTIONS:
 5. If a tool generated a blog post or email, present it clearly using Markdown.
 6. MANDATORY CITATIONS: Every single factual claim or news item MUST have an inline citation like [1] pointing to a specific URL provided in the execution log or pre-researched context.
 7. MANDATORY SOURCES LIST: If you make citations, you MUST end your response with a "Sources" list containing the clickable markdown links.
+8. LANGUAGE & SCRIPT SENSITIVITY: Match the user's language and script. If the user writes in English, respond in English. If the user writes in Hinglish (Hindi in Roman/Latin script), respond in Hinglish. Do NOT use Devnagri script unless the user's input is in Devnagri script.
             `.trim();
 
             // Hard cap to avoid 429
@@ -91,6 +92,7 @@ Here is the long-term knowledge about the user (Zehn):
 ${zehn}
 ${researchCtx ? researchCtx.substring(0, 1500) : ''}
 Respond to the user's message appropriately. Keep it concise and use the context from both memory types to remember things like their name and past preferences.
+CRITICAL LANGUAGE RULE: Match the user's language and script. If the user writes in English, respond in English. If they write in Hinglish (Hindi in Roman/Latin script), respond in Hinglish. Never output Devnagri script unless the user specifically typed in Devnagri script.
         `.trim();
 
         const responseText = await LLMService.chat(systemPrompt, message.content);
