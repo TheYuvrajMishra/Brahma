@@ -10,6 +10,7 @@ import { Logger } from '../core/Logger';
 import { EventBus, SystemEvents } from '../core/EventBus';
 import { HealthServer } from '../core/HealthServer';
 import { ReflectionEngine } from '../core/ReflectionEngine';
+import { MemoryManager } from '../core/MemoryManager';
 
 export class PipelineOrchestrator {
     private adapters: Adapter[] = [];
@@ -113,6 +114,34 @@ export class PipelineOrchestrator {
             const composeStartTime = Date.now();
             const response = await Composer.compose(message, routeResult.bucket, executionLog, researchResult);
             Logger.info('Composer', message.message_id, Date.now() - composeStartTime, 'SUCCESS');
+
+            // Append assistant response to moment.md for dialogue context
+            try {
+                const momentContent = MemoryManager.getMoment();
+                if (momentContent.includes('## Recent Turns')) {
+                    const parts = momentContent.split('## Recent Turns');
+                    const recentTurnsText = parts[1].trim();
+                    const recentTurns = recentTurnsText ? recentTurnsText.split('\n').filter((line: string) => line.trim() !== '') : [];
+                    
+                    const cleanReply = response.content.replace(/\s+/g, ' ').trim();
+                    const truncatedReply = cleanReply.length > 150 ? cleanReply.substring(0, 150) + '...' : cleanReply;
+                    recentTurns.push(`Assistant: ${truncatedReply}`);
+                    
+                    while (recentTurns.length > 6) {
+                        recentTurns.shift();
+                    }
+                    
+                    const renumbered = recentTurns.map((line: string, idx: number) => {
+                        const content = line.replace(/^\d+\.\s*/, '');
+                        return `${idx + 1}. ${content}`;
+                    });
+                    
+                    const newMoment = parts[0] + '## Recent Turns\n' + renumbered.join('\n');
+                    MemoryManager.updateMoment(newMoment);
+                }
+            } catch (err) {
+                console.error('Failed to append assistant response to moment.md:', err);
+            }
 
             // 4. Emit
             const emitStartTime = Date.now();

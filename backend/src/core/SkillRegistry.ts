@@ -5,6 +5,8 @@ import { LlmCall } from '../skills/LlmCall';
 import { WriteBlog, WriteEmail } from '../skills/Writers';
 import { SendEmail } from '../skills/SendEmail';
 import { GetEmails } from '../skills/GetEmails';
+import { DiscordReply } from '../skills/DiscordReply';
+import { DiscordCreateChannel } from '../skills/DiscordCreateChannel';
 
 class SkillRegistryClass {
     private skills: Map<string, ISkill> = new Map();
@@ -32,3 +34,5 @@ SkillRegistry.register(new WriteBlog());
 SkillRegistry.register(new WriteEmail());
 SkillRegistry.register(new SendEmail());
 SkillRegistry.register(new GetEmails());
+SkillRegistry.register(new DiscordReply());
+SkillRegistry.register(new DiscordCreateChannel());

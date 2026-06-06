@@ -13,11 +13,13 @@ You are the Observer engine for an AI assistant.
 Your job is to read the current memory state and the new message, and output exactly this JSON schema:
 
 {
-  "updated_moment_markdown": "# Moment: Session Memory\\n## Current Context\\n- **Current Topic**: <topic>\\n- **Detected Tone**: <tone>\\n- **Active Task**: None\\n\\n## Recent Turns\\n1. <previous turn or empty>\\n2. <previous turn or empty>\\n3. User: ${message.content.replace(/"/g, '\\"')}",
+  "updated_moment_markdown": "# Moment: Session Memory\\n## Current Context\\n- **Current Topic**: <topic>\\n- **Detected Tone**: <tone>\\n- **Active Task**: None\\n\\n## Recent Turns\\n<list of recent turns, ending with the new user message>",
   "new_long_term_facts": [
     "Array of significant facts learned from this message about the user (e.g. their name, preferences, project details). Leave empty if nothing significant was said."
   ]
 }
+
+Ensure the "updated_moment_markdown" preserves the conversation history (both User and Assistant turns) in "Recent Turns" and appends the new message "User: ${message.content.replace(/"/g, '\\"')}" at the end. Keep at most 6 recent turns.
 
 Return ONLY the raw JSON, with no markdown ticks.
         `.trim();

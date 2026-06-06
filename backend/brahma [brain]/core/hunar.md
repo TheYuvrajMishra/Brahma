@@ -48,3 +48,8 @@
 - **Description**: Produces WhatsApp-appropriate plain text.
 - **Parameters**: `content`, `use_emojis`
 - **Output**: Plain text string.
+
+### discord-create-channel
+- **Description**: Creates a new text or voice channel in the active Discord guild.
+- **Parameters**: `name` (the channel name string, required), `type` (the channel type, e.g. "text" or "voice", default: "text")
+- **Output**: Confirmation string indicating channel creation status.

@@ -41,7 +41,12 @@ export class Router {
         const moment = MemoryManager.getMoment();
         const hasActiveTask = /active task:\s*(?!none\b)\w+/i.test(moment);
         const confirmationWords = ['yes', 'confirm', 'yup', 'do it', 'go ahead', 'sure', 'ok', 'okay', 'yep', 'y', 'correct'];
-        const isConfirmation = confirmationWords.includes(text) || confirmationWords.some(word => text.startsWith(word));
+        const isNumber = /^\d+$/.test(text);
+        const isSingleLetter = /^[a-z]$/.test(text);
+        const isConfirmation = confirmationWords.includes(text) || 
+                               confirmationWords.some(word => text.startsWith(word)) ||
+                               isNumber ||
+                               isSingleLetter;
 
         if (words.length <= 6 && !hasActionVerb && !hasActiveTask && !isConfirmation) {
             return {

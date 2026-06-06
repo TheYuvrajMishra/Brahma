@@ -4,6 +4,8 @@ import { NormalizedMessage, PipelineResponse } from '../types/Message';
 import { config } from '../config';
 
 export class DiscordAdapter implements Adapter {
+    public static clientInstance: Client | null = null;
+    public static lastActiveGuildId: string | null = null;
     private client: Client;
     private typingIntervals: Map<string, NodeJS.Timeout> = new Map();
 
@@ -15,6 +17,7 @@ export class DiscordAdapter implements Adapter {
                 GatewayIntentBits.MessageContent
             ]
         });
+        DiscordAdapter.clientInstance = this.client;
     }
 
     async init(onMessage: (msg: NormalizedMessage) => void): Promise<void> {
@@ -29,6 +32,10 @@ export class DiscordAdapter implements Adapter {
 
         this.client.on('messageCreate', (message: Message) => {
             if (message.author.bot) return; // Ignore bots
+
+            if (message.guildId) {
+                DiscordAdapter.lastActiveGuildId = message.guildId;
+            }
 
             const normalized: NormalizedMessage = {
                 user_id: message.author.id,

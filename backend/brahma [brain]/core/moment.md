@@ -1,11 +1,13 @@
 # Moment: Session Memory
 ## Current Context
-- **Current Topic**: Cron Job Implementation
-- **Detected Tone**: Neutral
+- **Current Topic**: Discord Channel Creation
+- **Detected Tone**: Informal
 - **Active Task**: None
 
 ## Recent Turns
-1. User: i want you to summarize my last 5 emails and tell me whats happening in there
-2. User: tell me how to implement cron job code in my code
-3. User: hey
-4. User: message me hello in the discord
+1. User: bhai,mujhe life advice dedo
+2. User: i want your persona in this channel to be like sallu bhai
+3. User: 2
+4. User: bhai madad kro
+5. User: heylo
+6. Assistant: Hello Yuvraj, how can I assist you today?
