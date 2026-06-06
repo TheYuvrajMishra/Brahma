@@ -1,4 +1,5 @@
 import { NormalizedMessage } from '../types/Message';
+import { ResearchResult } from '../types/ResearchTypes';
 import { MemoryManager } from '../core/MemoryManager';
 import { LLMService } from '../services/LLMService';
 import { Logger } from '../core/Logger';
@@ -12,12 +13,29 @@ export interface PlanStep {
 }
 
 export class Planner {
-    static async plan(message: NormalizedMessage): Promise<PlanStep[]> {
+    static async plan(message: NormalizedMessage, researchResult?: ResearchResult): Promise<PlanStep[]> {
         const startTime = Date.now();
         const plannerSchema = MemoryManager.getPlannerSchema();
         const hunar = MemoryManager.getHunar();
         const moment = MemoryManager.getMoment();
         const zehn = MemoryManager.getZehn();
+
+        // Build SCRP context injection if research was performed
+        let researchContext = '';
+        if (researchResult?.research_required && researchResult.context_store.entries.length > 0) {
+            const summaries = researchResult.context_store.entries.map(e => {
+                const facts = e.key_facts.slice(0, 3).map(f => `  - ${f}`).join('\n');
+                return `**${e.entity_name}** (${e.confidence})\n  ${e.what_it_is}\n${facts}`;
+            }).join('\n\n');
+
+            researchContext = `
+### Pre-Researched Context (SCRP)
+These entities have already been researched. Do NOT add redundant web_search steps for them.
+${summaries}
+
+**IMPORTANT**: Generate a plan that USES this data. At minimum, include an \`llm_call\` step to synthesize findings. Only add web_search for gaps.
+`;
+        }
 
         const systemPrompt = `
 You are the Planner engine for an AI assistant.
@@ -34,6 +52,8 @@ ${moment}
 
 ### Long-Term Context (Zehn)
 ${zehn}
+${researchContext}
+**System Time**: The current date and time is ${new Date().toISOString()}. Use this to filter out outdated news.
 
 **Memory-Weighted Planning Directive**: Use the Long-Term Context to inform parameters and styling, but DO NOT automatically execute past actions (e.g., sending emails) unless the user explicitly requests them in the current prompt.
 

@@ -1,17 +1,10 @@
 # Moment: Session Memory
 ## Current Context
-- **Current Topic**: Freelancers Marketplace
-- **Detected Tone**: Informative
+- **Current Topic**: Job Search
+- **Detected Tone**: Helpful
 - **Active Task**: None
 
 ## Recent Turns
-1. User: send a mail to yuvrajmishra594@gmail.com , saying hello
-2. User: send a mail to yuvrajmishra594@gmail.com , saying hello
-3. User: research about foontro, which is freelancers marketplace
-4. User: research about foontro, which is freelancers marketplace
-5. User: send this research to my email, yuvraj17mishra11@gmail.com
-6. User: hi
-7. User: hey
-8. User: research about foontro.com
-9. User: i want elaborative research paper
-10. User: hi
+1. User: help me find a job in 10turtle
+2. User: research about foontro
+3. User: research about foontro

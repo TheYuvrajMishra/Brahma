@@ -71,4 +71,12 @@ export class MemoryManager {
             console.error('Failed to append to zehn.md:', err);
         }
     }
+
+    static getResearcherConfig(): string {
+        try {
+            return fs.readFileSync(path.join(config.brainPath, 'researcher.md'), 'utf-8');
+        } catch {
+            return '';
+        }
+    }
 }
