@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
+import { 
+    PiListLight, 
+    PiWifiHighLight, 
+    PiWifiSlashLight, 
+    PiArrowsCounterClockwiseLight,
+    PiTerminalLight
+} from 'react-icons/pi';
 import type { LayoutContextType } from '../components/MainLayout';
 
 interface LogEntry {
@@ -51,7 +58,6 @@ export const AuditTelemetryPage: React.FC = () => {
     const formatTimestamp = (ts: string) => {
         try {
             const d = new Date(ts);
-            // Show as YYYY-MM-DD HH:MM:SS
             const pad = (n: number) => n.toString().padStart(2, '0');
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         } catch {
@@ -69,72 +75,134 @@ export const AuditTelemetryPage: React.FC = () => {
     };
 
     return (
-        <div className="main-area">
+        <div className="main-area flex flex-col h-full">
             {/* Header */}
-            <div className="chat-header">
-                <div className="header-left">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-zinc-950/20 backdrop-blur-md z-10">
+                <div className="flex items-center gap-3">
                     {!sidebarOpen && (
-                        <button onClick={() => setSidebarOpen(true)} className="menu-btn" title="EXPAND_PANEL">///</button>
+                        <button 
+                            onClick={() => setSidebarOpen(true)} 
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/5 active:scale-95 transition-all duration-300"
+                            title="Expand Panel"
+                        >
+                            <PiListLight className="w-4 h-4" />
+                        </button>
                     )}
-                    <h1 className="header-title">AUDIT_LOGS</h1>
+                    <h1 className="font-display font-semibold tracking-wide text-sm text-white/95">
+                        AUDIT LOGS
+                    </h1>
                 </div>
-                <div className="connection-status">
-                    <span className="status-text">{connected ? 'STATUS: ONLINE' : 'STATUS: OFFLINE'}</span>
-                    <div className={`status-indicator ${connected ? 'indicator-online' : 'indicator-offline'}`}></div>
+                
+                {/* Connection Badge */}
+                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono border transition-all duration-500 ${
+                    connected 
+                        ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400' 
+                        : 'bg-rose-500/5 border-rose-500/10 text-rose-400'
+                }`}>
+                    {connected ? (
+                        <>
+                            <PiWifiHighLight className="w-3.5 h-3.5 animate-pulse" />
+                            <span>SYS_ONLINE</span>
+                        </>
+                    ) : (
+                        <>
+                            <PiWifiSlashLight className="w-3.5 h-3.5" />
+                            <span>SYS_OFFLINE</span>
+                        </>
+                    )}
                 </div>
             </div>
 
-            {/* Logs layout container */}
-            <div className="logs-layout">
-                <div className="logs-header">
-                    <div className="logs-title">[ SYSTEM_AUDIT_TRAIL ]</div>
-                    <button onClick={fetchLogs} className="logs-refresh-btn" disabled={!connected}>
-                        &gt;&gt;&gt; REFRESH_LOGS
+            {/* Content Body */}
+            <div className="flex-1 flex flex-col p-6 overflow-hidden gap-4">
+                {/* Telemetry Actions Header */}
+                <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">
+                            SYSTEM TELEMETRY AUDIT
+                        </span>
+                        <span className="text-xs font-mono text-zinc-300 font-semibold tracking-wide mt-0.5">
+                            [ LOG_DATA_STREAM ]
+                        </span>
+                    </div>
+
+                    <button 
+                        onClick={fetchLogs} 
+                        className="cta-pill-button-outline active:scale-[0.97]"
+                        disabled={!connected}
+                    >
+                        <span className="font-display font-medium text-xs">Sync Logs</span>
+                        <div className="cta-icon-wrapper-outline">
+                            <PiArrowsCounterClockwiseLight className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                        </div>
                     </button>
                 </div>
 
-                <div className="logs-table-container">
-                    {loading && logs.length === 0 ? (
-                        <div className="editor-empty">AWAITING_LOGS_STREAM...</div>
-                    ) : error ? (
-                        <div className="editor-empty" style={{ color: 'var(--accent-red)' }}>
-                            ERROR_LOADING_LOGS: {error}
-                        </div>
-                    ) : logs.length === 0 ? (
-                        <div className="editor-empty">NO_LOGS_FOUND_IN_SYSTEM</div>
-                    ) : (
-                        <table className="logs-table">
-                            <thead>
-                                <tr>
-                                    <th className="logs-th" style={{ width: '180px' }}>TIMESTAMP</th>
-                                    <th className="logs-th" style={{ width: '100px' }}>LEVEL</th>
-                                    <th className="logs-th" style={{ width: '150px' }}>ACTION</th>
-                                    <th className="logs-th">DETAILS</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {logs.map((log, index) => {
-                                    const levelClass = `level-${(log.level || 'INFO').toLowerCase()}`;
-                                    return (
-                                        <tr key={index} className="logs-tr">
-                                            <td className="logs-td log-time">
-                                                {formatTimestamp(log.timestamp)}
-                                            </td>
-                                            <td className={`logs-td log-level ${levelClass}`}>
-                                                {(log.level || 'INFO').toUpperCase()}
-                                            </td>
-                                            <td className="logs-td log-action">
-                                                {log.action || '-'}
-                                            </td>
-                                            <td className="logs-td log-details">
-                                                {formatDetails(log.details)}
-                                            </td>
+                {/* Double Bezel Logs Table Grid */}
+                <div className="flex-1 double-bezel-outer p-1 bg-white/[0.01] border border-white/5 rounded-[2rem] flex flex-col overflow-hidden hover:border-white/10 transition-colors duration-300">
+                    <div className="flex-1 double-bezel-inner bg-[#070707]/90 rounded-[calc(2rem-0.375rem)] shadow-inner overflow-hidden flex flex-col">
+                        <div className="flex-1 overflow-auto pr-1">
+                            {loading && logs.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-center">
+                                    <PiTerminalLight className="w-8 h-8 text-zinc-600 mb-2 animate-pulse" />
+                                    <span className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+                                        STREAMING_AUDIT_NODES...
+                                    </span>
+                                </div>
+                            ) : error ? (
+                                <div className="h-full flex items-center justify-center text-rose-400 text-xs font-mono">
+                                    ERROR: {error}
+                                </div>
+                            ) : logs.length === 0 ? (
+                                <div className="h-full flex items-center justify-center text-zinc-500 text-xs font-mono">
+                                    NO_SYSTEM_LOGS_FOUND
+                                </div>
+                            ) : (
+                                <table className="telemetry-table">
+                                    <thead>
+                                        <tr>
+                                            <th className="telemetry-th" style={{ width: '180px' }}>Timestamp</th>
+                                            <th className="telemetry-th" style={{ width: '100px' }}>Level</th>
+                                            <th className="telemetry-th" style={{ width: '150px' }}>Action</th>
+                                            <th className="telemetry-th">Details</th>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
+                                    </thead>
+                                    <tbody>
+                                        {logs.map((log, index) => {
+                                            const levelLower = (log.level || 'info').toLowerCase();
+                                            
+                                            // Dynamic badge styles for level
+                                            let levelBadgeClass = 'text-zinc-400 bg-zinc-500/5 border-zinc-500/10';
+                                            if (levelLower === 'audit') {
+                                                levelBadgeClass = 'text-amber-400 bg-amber-500/5 border-amber-500/10';
+                                            } else if (levelLower === 'error') {
+                                                levelBadgeClass = 'text-rose-400 bg-rose-500/5 border-rose-500/10 animate-pulse';
+                                            }
+
+                                            return (
+                                                <tr key={index} className="telemetry-tr">
+                                                    <td className="telemetry-td font-mono text-zinc-500 text-[11px] whitespace-nowrap">
+                                                        {formatTimestamp(log.timestamp)}
+                                                    </td>
+                                                    <td className="telemetry-td">
+                                                        <span className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-mono tracking-wider font-semibold border ${levelBadgeClass}`}>
+                                                            {levelLower.toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td className="telemetry-td font-medium text-zinc-200">
+                                                        {log.action || '-'}
+                                                    </td>
+                                                    <td className="telemetry-td text-zinc-400 font-mono text-[11px] leading-relaxed whitespace-pre-wrap word-break-all max-w-lg select-text">
+                                                        {formatDetails(log.details)}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

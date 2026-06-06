@@ -4,6 +4,7 @@ import { ContextStoreManager } from '../core/ContextStoreManager';
 import { LLMService } from '../services/LLMService';
 import { SkillRegistry } from '../core/SkillRegistry';
 import { Logger } from '../core/Logger';
+import { MemoryManager } from '../core/MemoryManager';
 
 // ============================================================================
 // SCRP Researcher — Rate-limit-friendly implementation
@@ -35,9 +36,14 @@ export class Researcher {
             // ── Gate Check ───────────────────────────────────────────────
             if (parsedIntent.flagged_entities.length === 0 || (routeBucket === 'greeting' && parsedIntent.request_type === 'casual')) {
                 console.log(`[Researcher] SKIPPED: no flagged entities or greeting`);
+                const moment = await MemoryManager.getMoment(message.channel_id);
+                const searchText = (message.content + ' ' + moment).toLowerCase();
+                const relevantCachedEntries = ContextStoreManager.getAll().filter(entry => 
+                    searchText.includes(entry.entity_name.toLowerCase())
+                );
                 return {
                     parsed_intent: parsedIntent,
-                    context_store: { entries: ContextStoreManager.getAll(), research_depth: 'minimum', total_searches_executed: 0, gaps: [] },
+                    context_store: { entries: relevantCachedEntries, research_depth: 'minimum', total_searches_executed: 0, gaps: [] },
                     research_required: false,
                     skipped_reason: parsedIntent.flagged_entities.length === 0 ? 'No entities need research.' : 'Greeting mode.',
                     duration_ms: Date.now() - startTime,

@@ -10,6 +10,8 @@
 5. Do not include explanatory prose outside the JSON payload.
 6. **Parameter Interpolation**: If a step's parameter needs to use the dynamic output of a previous step, use the template syntax `{{stepN}}` (where `N` is the 1-indexed step number). For example, if step 1 drafts an email using `write-email`, step 2 should send it using `send-email` with `"params": { "recipient": "...", "subject": "...", "body": "{{step1}}" }`. Do NOT hardcode placeholder text or duplicate drafts in parameters when they should be dynamically interpolated from previous steps.
 7. **Recipient Grounding Rules**: When passing recipient names or drafting messages, do not infer real names, gender, or relationship status from email handles unless explicitly confirmed or provided by the user. Use the name exactly as the user provided (e.g. if the user says "savaya", use "Savaya" instead of "Savayashikha").
+8. **Self-Email Resolution**: If the user requests to send/draft an email to "me", "myself", "mujhe", or similar self-referential terms, resolve the recipient's email parameter using the email address found in the Long-Term Context (e.g., yuvraj17mishra11@gmail.com).
+9. **Tone & Style Alignment**: Configure parameters (like tone/style in `write-email`) to align with the active language mix and conversational register of the conversation history (e.g., casual Hinglish) rather than default corporate formatting.
 
 ## Output JSON Schema
 

@@ -13,12 +13,13 @@ export interface PlanStep {
 }
 
 export class Planner {
-    static async plan(message: NormalizedMessage, researchResult?: ResearchResult): Promise<PlanStep[]> {
+    static async plan(message: NormalizedMessage, researchResult?: ResearchResult, intent: string = 'other'): Promise<PlanStep[]> {
         const startTime = Date.now();
         const plannerSchema = MemoryManager.getPlannerSchema();
         const hunar = MemoryManager.getHunar();
         const moment = await MemoryManager.getMoment(message.channel_id);
-        const zehn = MemoryManager.getZehn();
+        const rawZehn = MemoryManager.getZehn();
+        const zehn = MemoryManager.getFilteredZehn(rawZehn, intent, message.content, moment);
 
         // Build SCRP context injection if research was performed
         let researchContext = '';
@@ -54,6 +55,15 @@ ${moment}
 ${zehn}
 ${researchContext}
 **System Time**: The current date and time is ${new Date().toISOString()}. Use this to filter out outdated news.
+
+### Tone & Conversational Anchoring Rules:
+- You MUST match the active conversational tone, language register, emotional temperature, and language mix (e.g. Hinglish, English, Hindi) from the recent turns in the Moment.
+- If the recent turns are casual Hinglish (e.g., using "bhai", "yaar", "araam"), configure tool parameters (like tone in write-email) to keep that exact register and cadence. DO NOT fall back to formal English or corporate templates unless the user explicitly requests a professional email/style.
+- Never write, configure, or include diagnostic/clinical assertions about health/ADHD in any parameters.
+
+### Recipient Grounding & Self-Email Rules:
+- If the user requests to send/draft an email to "me", "myself", "mujhe", or similar self-referential terms, resolve the recipient's email parameter using the email address found in the Long-Term Context (e.g., yuvraj17mishra11@gmail.com).
+- If the recipient or their email address is ambiguous, make a plan step to draft the email first or ask the user for confirmation rather than fabricating details.
 
 **Memory-Weighted Planning Directive**: Use the Long-Term Context to inform parameters and styling, but DO NOT automatically execute past actions (e.g., sending emails) unless the user explicitly requests them in the current prompt.
 

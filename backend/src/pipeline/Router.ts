@@ -6,6 +6,7 @@ export interface RouteResult {
     bucket: 'greeting' | 'simple' | 'complex';
     rule_matched: string;
     confidence_score: number;
+    intent: 'casual_chat' | 'emotional_support' | 'email_request' | 'coding' | 'research' | 'command_execution' | 'other';
 }
 
 export class Router {
@@ -28,7 +29,8 @@ export class Router {
                 return {
                     bucket: 'greeting',
                     rule_matched: 'regex_greeting',
-                    confidence_score: 1.0
+                    confidence_score: 1.0,
+                    intent: 'casual_chat'
                 };
             }
         }
@@ -52,31 +54,50 @@ export class Router {
             return {
                 bucket: 'simple',
                 rule_matched: 'rule_length_and_verbs',
-                confidence_score: 0.9
+                confidence_score: 0.9,
+                intent: 'casual_chat'
             };
         }
 
         // 2.5 Force complex if action verb is explicitly used
         if (hasActionVerb) {
+            let determinedIntent: RouteResult['intent'] = 'other';
+            if (text.includes('mail') || text.includes('email') || text.includes('send') || text.includes('msg') || text.includes('message')) {
+                determinedIntent = 'email_request';
+            } else if (text.includes('research') || text.includes('summarize') || text.includes('analyze')) {
+                determinedIntent = 'research';
+            } else if (text.includes('create') || text.includes('build') || text.includes('plan')) {
+                determinedIntent = 'command_execution';
+            }
             return {
                 bucket: 'complex',
                 rule_matched: 'rule_action_verb',
-                confidence_score: 0.9
+                confidence_score: 0.9,
+                intent: determinedIntent
             };
         }
 
-        // 3. LLM Fallback (Complex vs Simple)
+        // 3. LLM Fallback (Complex vs Simple + Intent Classification)
         const systemPrompt = `
-You are an intent classifier for an AI assistant.
-Classify the user's message into exactly one of these two buckets:
-- "simple": A straightforward question, casual chat, or query that does NOT require multi-step planning.
-- "complex": A task that requires multi-step planning, research, executing tools, or writing a detailed report.
+You are an intent and bucket classifier for an AI assistant.
+Classify the user's message into:
+1. "bucket":
+   - "simple": A straightforward question, casual chat, or query that does NOT require multi-step planning or tools.
+   - "complex": A task that requires multi-step planning, research, executing tools (like sending email, creating channel, searching web), or writing a detailed report.
+2. "intent":
+   - "casual_chat": Greeting, small talk, general chit-chat.
+   - "emotional_support": Venting about stress, feeling overwhelmed, asking for motivation, personal comfort, or casual check-ins.
+   - "email_request": Asking to draft, send, read, or manage emails.
+   - "coding": Writing code, debugging, explaining software architecture.
+   - "research": Asking for facts, news, web searches, detailed summaries.
+   - "command_execution": Explicit commands to run processes, create files, edit configurations.
+   - "other": Anything else.
 
 ### Context (Current Conversation Memory)
 ${moment}
 
 Respond ONLY with a JSON object in this format:
-{"bucket": "simple" | "complex", "confidence": <float between 0 and 1>}
+{"bucket": "simple" | "complex", "intent": "casual_chat" | "emotional_support" | "email_request" | "coding" | "research" | "command_execution" | "other", "confidence": <float between 0 and 1>}
         `.trim();
 
         try {
@@ -85,10 +106,13 @@ Respond ONLY with a JSON object in this format:
                 const cleanResponse = llmResponse.replace(/```(?:json)?/gi, '').trim();
                 const parsed = JSON.parse(cleanResponse);
                 if (parsed.bucket === 'simple' || parsed.bucket === 'complex') {
+                    const validIntents = ['casual_chat', 'emotional_support', 'email_request', 'coding', 'research', 'command_execution', 'other'];
+                    const finalIntent = validIntents.includes(parsed.intent) ? parsed.intent : 'other';
                     return {
                         bucket: parsed.bucket,
                         rule_matched: 'llm_classifier',
-                        confidence_score: parsed.confidence || 0.5
+                        confidence_score: parsed.confidence || 0.5,
+                        intent: finalIntent
                     };
                 }
             }
@@ -100,7 +124,8 @@ Respond ONLY with a JSON object in this format:
         return {
             bucket: 'simple',
             rule_matched: 'fallback_error',
-            confidence_score: 0.0
+            confidence_score: 0.0,
+            intent: 'other'
         };
     }
 }

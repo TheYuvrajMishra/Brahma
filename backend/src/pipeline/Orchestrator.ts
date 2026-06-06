@@ -91,7 +91,7 @@ export class PipelineOrchestrator {
             // 3.5. Plan & Execute
             let executionLog: ExecutionResult[] | undefined = undefined;
             if (routeResult.bucket === 'complex') {
-                const plan = await Planner.plan(message, researchResult);
+                const plan = await Planner.plan(message, researchResult, routeResult.intent);
                 EventBus.emit('PLANNING_COMPLETE', { message, plan });
                 
                 if (plan.length > 0) {
@@ -112,7 +112,7 @@ export class PipelineOrchestrator {
 
             // 4. Compose
             const composeStartTime = Date.now();
-            const response = await Composer.compose(message, routeResult.bucket, executionLog, researchResult);
+            const response = await Composer.compose(message, routeResult.bucket, executionLog, researchResult, routeResult.intent);
             Logger.info('Composer', message.message_id, Date.now() - composeStartTime, 'SUCCESS');
 
             // Append assistant response to moment.md for dialogue context

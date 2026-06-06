@@ -8,15 +8,18 @@ export class Composer {
     /**
      * Phase 8: Final Synthesis
      */
-    static async compose(message: NormalizedMessage, routeBucket: string, executionLog?: ExecutionResult[], researchResult?: ResearchResult): Promise<PipelineResponse> {
+    static async compose(message: NormalizedMessage, routeBucket: string, executionLog?: ExecutionResult[], researchResult?: ResearchResult, intent: string = 'other'): Promise<PipelineResponse> {
         let soul = await MemoryManager.getSoul(message.channel_id);
+        const moment = await MemoryManager.getMoment(message.channel_id);
+        const rawZehn = MemoryManager.getZehn();
+        const zehn = MemoryManager.getFilteredZehn(rawZehn, intent, message.content, moment);
         
         if (routeBucket === 'complex') {
             if (!executionLog) {
                 // Graceful degradation: if research found something, synthesize from it
                 if (researchResult?.context_store?.entries?.length) {
                     const ctx = this.formatResearchContext(researchResult);
-                    const prompt = `You are Brahma. Here is your personality:\n${soul}\n\nPre-researched context:\n${ctx}\n\nUsing the context above, respond to the user. Cite sources with [1] notation. Be direct.`.trim();
+                    const prompt = `You are Brahma. Here is your personality:\n${soul}\n\nPre-researched context:\n${ctx}\n\nUsing the context above, respond to the user. Cite sources with [1] notation only if factual. Be direct.`.trim();
                     const resp = await LLMService.chat(prompt, message.content);
                     if (resp) return { originalMessage: message, content: resp };
                 }
@@ -41,19 +44,31 @@ export class Composer {
 You are Brahma. Here is your soul/personality:
 ${soul}
 
+### Long-Term Context (Zehn)
+${zehn}
+
+### Current Context (Moment)
+${moment}
+
 You have just executed a complex plan for the user. Here are the results of your execution:
 ${logString}
 ${cappedCtx}
 Your task is to synthesize these results into a final, conversational response for the user.
+
 CRITICAL INSTRUCTIONS:
 1. Speak EXACTLY in your defined Tone and Personality.
 2. NEVER use generic AI boilerplate (e.g., "I have conducted a search", "Here is a summary", "Next Steps", "If you need more help").
 3. DO NOT use generic section headers like "Search Overview" or "Detailed Summary". 
 4. Be direct, concise, and just state what you found or generated.
 5. If a tool generated a blog post or email, present it clearly using Markdown.
-6. MANDATORY CITATIONS: Every single factual claim or news item MUST have an inline citation like [1] pointing to a specific URL provided in the execution log or pre-researched context.
-7. MANDATORY SOURCES LIST: If you make citations, you MUST end your response with a "Sources" list containing the clickable markdown links.
-8. LANGUAGE & SCRIPT SENSITIVITY: Match the user's language and script. If the user writes in English, respond in English. If the user writes in Hinglish (Hindi in Roman/Latin script), respond in Hinglish. Do NOT use Devnagri script unless the user's input is in Devnagri script.
+6. CITATIONS RULE: Cite sources using [1] notation ONLY if the user's request is factual, research-based, or explicitly asks for references/links, AND the source URLs are present in the execution log or pre-researched context. Do NOT invent URLs or citations.
+7. SOURCES LIST: Provide a "Sources" list at the end of the response ONLY if you cited sources in the response body. If no citations are made, do NOT output a Sources list.
+8. NO CITATIONS FOR CASUAL CHAT/EMAILS: Never include citations, Wikipedia links, or academic sources for casual chat, emotional support, simple emails, or personal advice.
+9. TONE & CONVERSATIONAL ANCHORING:
+   - You MUST match the active conversational tone, language register, emotional temperature, and language mix (e.g. Hinglish, English, Hindi) from the recent turns in the Moment.
+   - If the recent turns are casual Hinglish (e.g. using "bhai", "yaar", "araam"), keep that exact register and cadence. DO NOT collapse to formal English or corporate boilerplate.
+   - Never make diagnostic/clinical assertions, or assume health/ADHD conditions unless the user explicitly refers to it in the active turn.
+10. LANGUAGE & SCRIPT SENSITIVITY: Match the user's language and script. If the user writes in English, respond in English. If the user writes in Hinglish (Hindi in Roman/Latin script), respond in Hinglish. Do NOT use Devnagri script unless the user's input is in Devnagri script.
             `.trim();
 
             // Hard cap to avoid 429
@@ -78,8 +93,6 @@ CRITICAL INSTRUCTIONS:
         }
 
         // Fast Reply Lane (Simple / Greeting)
-        const moment = await MemoryManager.getMoment(message.channel_id);
-        const zehn = MemoryManager.getZehn();
         const researchCtx = this.formatResearchContext(researchResult);
         const systemPrompt = `
 You are Brahma. Here is your soul:
@@ -92,7 +105,14 @@ Here is the long-term knowledge about the user (Zehn):
 ${zehn}
 ${researchCtx ? researchCtx.substring(0, 1500) : ''}
 Respond to the user's message appropriately. Keep it concise and use the context from both memory types to remember things like their name and past preferences.
-CRITICAL LANGUAGE RULE: Match the user's language and script. If the user writes in English, respond in English. If they write in Hinglish (Hindi in Roman/Latin script), respond in Hinglish. Never output Devnagri script unless the user specifically typed in Devnagri script.
+
+### Tone & Conversational Anchoring Rules:
+- You MUST match the active conversational tone, language register, emotional temperature, and language mix (e.g. Hinglish, English, Hindi) from the recent turns in the Moment.
+- If the recent turns are casual Hinglish, keep that exact register and cadence. DO NOT collapse to formal English or corporate boilerplate.
+- Never make diagnostic/clinical assertions, or assume health/ADHD conditions unless the user explicitly refers to it in the active turn.
+
+### Language & Script Rules:
+- Match the user's language and script. If the user writes in English, respond in English. If they write in Hinglish (Hindi in Roman/Latin script), respond in Hinglish. Never output Devnagri script unless the user specifically typed in Devnagri script.
         `.trim();
 
         const responseText = await LLMService.chat(systemPrompt, message.content);

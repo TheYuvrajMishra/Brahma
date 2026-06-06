@@ -116,6 +116,10 @@ export const MainLayout: React.FC = () => {
 
     return (
         <div className="app-container">
+            {/* Ambient Background glows */}
+            <div className="ambient-glow-1"></div>
+            <div className="ambient-glow-2"></div>
+
             {/* SVG Noise Filter */}
             <svg style={{ position: 'absolute', width: 0, height: 0 }} xmlns="http://www.w3.org/2000/svg">
                 <filter id="noiseFilter">
@@ -137,18 +141,20 @@ export const MainLayout: React.FC = () => {
                 activePage={activePage}
             />
 
-            <Outlet context={{
-                socket,
-                connected,
-                sessions,
-                activeSessionId,
-                setActiveSessionId,
-                createNewSession,
-                deleteSession,
-                switchSession,
-                sidebarOpen,
-                setSidebarOpen
-            }} />
+            <div className="main-island">
+                <Outlet context={{
+                    socket,
+                    connected,
+                    sessions,
+                    activeSessionId,
+                    setActiveSessionId,
+                    createNewSession,
+                    deleteSession,
+                    switchSession,
+                    sidebarOpen,
+                    setSidebarOpen
+                }} />
+            </div>
         </div>
     );
 };
