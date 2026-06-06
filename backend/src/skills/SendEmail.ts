@@ -9,11 +9,8 @@ export class SendEmail implements ISkill {
         const recipient = params.recipient;
         const subject = params.subject || 'No Subject';
         let body = params.body || '';
-
-        if (params._dependency_context) {
-            // Include outputs from previous steps so the LLM doesn't just email "{{summary}}"
-            body += '\n\n' + params._dependency_context;
-        }
+        
+        body = this.sanitizeEmailBody(body);
 
         if (!recipient) {
             return 'Failed to send email: No recipient provided.';
@@ -59,5 +56,41 @@ export class SendEmail implements ISkill {
             console.error('[SendEmail] Error sending email:', err);
             return `Failed to send email: ${err.message}`;
         }
+    }
+
+    private sanitizeEmailBody(body: string): string {
+        // 1. Remove markdown code blocks if present (e.g. ```text or ```)
+        let cleaned = body.replace(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, '$1');
+        cleaned = cleaned.replace(/```[\s\S]*?$/g, ''); // Unclosed code blocks
+
+        // 2. Remove leading/trailing whitespace
+        cleaned = cleaned.trim();
+
+        // 3. Remove conversational prefixes (e.g. "Here is a draft:", "Here is the email:")
+        const lines = cleaned.split('\n');
+        let contentStartIndex = 0;
+        
+        for (let i = 0; i < Math.min(lines.length, 5); i++) {
+            const line = lines[i].trim();
+            // If we hit a salutation, stop looking for filler.
+            if (/^(dear|hi|hello|hey|to\b)/i.test(line)) {
+                contentStartIndex = i;
+                break;
+            }
+            // If we see "Subject:" line, we can skip it since subject is passed in params
+            if (/^subject:/i.test(line)) {
+                contentStartIndex = i + 1;
+                break;
+            }
+        }
+        
+        if (contentStartIndex > 0) {
+            cleaned = lines.slice(contentStartIndex).join('\n').trim();
+        }
+
+        // 4. Remove any step outputs or dependency context patterns if they got leaked
+        cleaned = cleaned.replace(/--- Output from Step \d+ [\s\S]*?---/g, '');
+        
+        return cleaned.trim();
     }
 }

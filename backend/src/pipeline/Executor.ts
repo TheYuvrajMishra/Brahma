@@ -50,12 +50,15 @@ export class Executor {
                         return `--- Output from Step ${dep} (${res?.action}) ---\n${res?.output}`;
                     }).join('\n\n');
 
+                    // Interpolate step parameters using execution results so far
+                    const interpolatedParams = this.interpolateParams(step.params, results);
+
                     // Inject context into params so the tool can see what happened before it
-                    const paramsToRun = { ...step.params, _dependency_context: depOutputs };
+                    const paramsToRun = { ...interpolatedParams, _dependency_context: depOutputs };
                     
                     output = await SkillRegistry.runSkill(step.tool, paramsToRun);
                     
-                    Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: step.params, outputLength: output.length, status: 'success' });
+                    Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: interpolatedParams, outputLength: output.length, status: 'success' });
                     
                     success = true;
                 } catch (err) {
@@ -86,5 +89,24 @@ export class Executor {
 
         Logger.info('Executor', message.message_id, 0, 'COMPLETE', { completed: completedSteps.size, total: plan.length });
         return results;
+    }
+
+    private static interpolateParams(params: any, results: ExecutionResult[]): any {
+        if (typeof params === 'string') {
+            return params.replace(/\{\{step(\d+)\}\}/g, (match, stepNumStr) => {
+                const stepNum = parseInt(stepNumStr, 10);
+                const referencedResult = results.find(r => r.step === stepNum);
+                return referencedResult ? referencedResult.output : match;
+            });
+        } else if (Array.isArray(params)) {
+            return params.map(item => this.interpolateParams(item, results));
+        } else if (params !== null && typeof params === 'object') {
+            const resolved: any = {};
+            for (const key of Object.keys(params)) {
+                resolved[key] = this.interpolateParams(params[key], results);
+            }
+            return resolved;
+        }
+        return params;
     }
 }

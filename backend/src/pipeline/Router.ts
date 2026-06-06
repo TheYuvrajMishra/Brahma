@@ -14,19 +14,27 @@ export class Router {
     static async route(message: NormalizedMessage): Promise<RouteResult> {
         const text = message.content.trim().toLowerCase();
 
-        // 1. Rules: Greetings
+        // 1. Rules: Greetings (only if the message is purely a greeting)
         const greetingRegex = /^(hi|hello|hey|sup|what's up|greetings)(\s|$|[!?.,])/;
         if (greetingRegex.test(text)) {
-            return {
-                bucket: 'greeting',
-                rule_matched: 'regex_greeting',
-                confidence_score: 1.0
-            };
+            const cleanedText = text
+                .replace(/^(hi|hello|hey|sup|what's up|greetings)/g, '')
+                .replace(/\bbrahma\b/g, '')
+                .replace(/[!?.,\s]/g, '')
+                .trim();
+            
+            if (cleanedText.length === 0) {
+                return {
+                    bucket: 'greeting',
+                    rule_matched: 'regex_greeting',
+                    confidence_score: 1.0
+                };
+            }
         }
 
         // 2. Rules: Simple constraints
         const words = text.split(/\s+/);
-        const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email'];
+        const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
         if (words.length <= 6 && !hasActionVerb) {

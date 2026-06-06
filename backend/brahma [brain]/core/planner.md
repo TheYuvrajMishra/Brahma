@@ -8,6 +8,8 @@
 3. Explicitly declare dependencies for each step.
 4. Output strictly in the defined JSON schema.
 5. Do not include explanatory prose outside the JSON payload.
+6. **Parameter Interpolation**: If a step's parameter needs to use the dynamic output of a previous step, use the template syntax `{{stepN}}` (where `N` is the 1-indexed step number). For example, if step 1 drafts an email using `write-email`, step 2 should send it using `send-email` with `"params": { "recipient": "...", "subject": "...", "body": "{{step1}}" }`. Do NOT hardcode placeholder text or duplicate drafts in parameters when they should be dynamically interpolated from previous steps.
+7. **Recipient Grounding Rules**: When passing recipient names or drafting messages, do not infer real names, gender, or relationship status from email handles unless explicitly confirmed or provided by the user. Use the name exactly as the user provided (e.g. if the user says "savaya", use "Savaya" instead of "Savayashikha").
 
 ## Output JSON Schema
 
@@ -25,7 +27,9 @@ The Planner must output a validated JSON array of step objects:
 ]
 ```
 
-## Example Output
+## Example Outputs
+
+### Example 1: Web Research & Synthesis
 ```json
 [
   {
@@ -40,6 +44,36 @@ The Planner must output a validated JSON array of step objects:
     "action": "summarize_results",
     "tool": "llm_call",
     "params": { "prompt_template": "summarize_search" },
+    "depends_on": [1]
+  }
+]
+```
+
+### Example 2: Email Draft & Send Flow
+```json
+[
+  {
+    "step": 1,
+    "action": "draft_email",
+    "tool": "write-email",
+    "params": {
+      "recipient": "Savaya",
+      "subject": "Expression of Love",
+      "tone": "casual/playful",
+      "sender_name": "Yuvraj",
+      "key_points": ["i love her veeerrryy much"]
+    },
+    "depends_on": []
+  },
+  {
+    "step": 2,
+    "action": "send_email",
+    "tool": "send-email",
+    "params": {
+      "recipient": "savayashikha571@gmail.com",
+      "subject": "Expression of Love",
+      "body": "{{step1}}"
+    },
     "depends_on": [1]
   }
 ]
