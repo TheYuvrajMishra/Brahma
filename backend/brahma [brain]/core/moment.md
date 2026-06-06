@@ -5,9 +5,6 @@
 - **Active Task**: None
 
 ## Recent Turns
-1. User: help me find a job in 10turtle
-2. User: research about foontro
-3. User: research about foontro
-4. User: email me hello
-5. User: hey
-6. User: how are you
+1. User: how are you
+2. User: hey
+3. User: email me hello

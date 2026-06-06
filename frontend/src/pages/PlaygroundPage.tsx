@@ -140,7 +140,15 @@ export const PlaygroundPage: React.FC = () => {
     };
 
     return (
-        <div className="app-container" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+        <div className="app-container">
+            {/* SVG Noise Filter */}
+            <svg style={{ position: 'absolute', width: 0, height: 0 }} xmlns="http://www.w3.org/2000/svg">
+                <filter id="noiseFilter">
+                    <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/>
+                </filter>
+            </svg>
+            <div className="noise-overlay"></div>
+            
             <Sidebar 
                 sidebarOpen={sidebarOpen}
                 setSidebarOpen={setSidebarOpen}

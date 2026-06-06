@@ -32,13 +32,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         <div className="main-area">
             {/* Header */}
             <div className="chat-header">
-                {!sidebarOpen && (
-                    <button onClick={() => setSidebarOpen(true)} className="menu-btn" title="Open sidebar">☰</button>
-                )}
-                <h1 className="header-title">Brahma Playground</h1>
+                <div className="header-left">
+                    {!sidebarOpen && (
+                        <button onClick={() => setSidebarOpen(true)} className="menu-btn" title="EXPAND_PANEL">///</button>
+                    )}
+                    <h1 className="header-title">BRAHMA_TELEMETRY</h1>
+                </div>
                 <div className="connection-status">
-                    <div className={`status-dot ${connected ? 'status-online' : 'status-offline'}`}></div>
-                    <span className="status-text">{connected ? 'Connected' : 'Disconnected'}</span>
+                    <span className="status-text">{connected ? 'STATUS: ONLINE' : 'STATUS: OFFLINE'}</span>
+                    <div className={`status-indicator ${connected ? 'indicator-online' : 'indicator-offline'}`}></div>
                 </div>
             </div>
 
@@ -48,14 +50,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <div className="messages-area">
                     {messages.length === 0 && (
                         <div className="empty-state">
-                            <p className="empty-title">Start a conversation</p>
-                            <p className="empty-subtitle">Type a message below to begin.</p>
+                            <p className="empty-title">AWAITING_INPUT</p>
+                            <p className="empty-subtitle">SYS_RDY: PROVIDE COMMAND MATRIX TO PROCEED.</p>
                         </div>
                     )}
                     {messages.map((msg, i) => (
                         <div key={i} className={`message-row ${msg.role === 'user' ? 'message-user' : 'message-assistant'}`}>
                             <div className={`message-bubble ${msg.role === 'user' ? 'bubble-user' : 'bubble-assistant'}`}>
-                                <p className="message-sender">{msg.role === 'user' ? 'You' : 'Brahma Core'}</p>
+                                <p className="message-sender">{msg.role === 'user' ? '< USR_INPUT >' : '< SYS_OUTPUT >'}</p>
                                 <div className="message-content prose prose-sm max-w-none">
                                     {msg.role === 'assistant' ? (
                                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
@@ -70,9 +72,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     {isTyping && (
                         <div className="message-row message-assistant">
                             <div className="typing-indicator">
-                                <span className="typing-dot"></span>
-                                <span className="typing-dot"></span>
-                                <span className="typing-dot"></span>
+                                <span className="typing-block">[█]</span>
+                                <span className="typing-text">PROCESSING_DATA_STREAM...</span>
                             </div>
                         </div>
                     )}
@@ -87,11 +88,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         className="chat-input"
-                        placeholder="Enter your command..."
+                        placeholder="INPUT_COMMAND_STRING..."
                         autoComplete="off"
                     />
                     <button type="submit" className="send-btn">
-                        Send
+                        &gt;&gt;&gt; EXECUTE
                     </button>
                 </form>
             </div>

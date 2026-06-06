@@ -28,25 +28,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const formatTime = (dateStr: string) => {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
-        if (mins < 1) return 'Just now';
-        if (mins < 60) return `${mins}m ago`;
+        if (mins < 1) return 'T-00:00';
+        if (mins < 60) return `T-${mins.toString().padStart(2, '0')}:00`;
         const hrs = Math.floor(mins / 60);
-        if (hrs < 24) return `${hrs}h ago`;
+        if (hrs < 24) return `T-${hrs}H`;
         const days = Math.floor(hrs / 24);
-        return `${days}d ago`;
+        return `T-${days}D`;
     };
 
     return (
         <div className={`sidebar ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
             {/* Sidebar Header */}
             <div className="sidebar-header">
-                <h2 className="sidebar-title">Sessions</h2>
-                <button onClick={() => setSidebarOpen(false)} className="sidebar-close-btn" title="Close sidebar">✕</button>
+                <h2 className="sidebar-title">[ SESSION_DATA ]</h2>
+                <button onClick={() => setSidebarOpen(false)} className="sidebar-close-btn" title="CLOSE_PANEL">✕</button>
             </div>
 
             {/* New Chat Button */}
             <button onClick={createNewSession} className="new-chat-btn">
-                + New Chat
+                [+] INIT_SESSION
             </button>
 
             {/* Session List */}
@@ -58,7 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onClick={() => switchSession(session.sessionId)}
                     >
                         <div className="session-info">
-                            <p className="session-title">{session.title}</p>
+                            <p className="session-title">{session.title.toUpperCase()}</p>
                             <p className="session-time">{formatTime(session.updatedAt)}</p>
                         </div>
                         {deleteConfirm === session.sessionId ? (
@@ -66,18 +66,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 <button
                                     onClick={(e) => { e.stopPropagation(); deleteSession(session.sessionId); }}
                                     className="delete-yes"
-                                >✓</button>
+                                >[ Y ]</button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
                                     className="delete-no"
-                                >✕</button>
+                                >[ N ]</button>
                             </div>
                         ) : (
                             <button
                                 onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.sessionId); }}
                                 className="delete-btn"
-                                title="Delete session"
-                            >🗑</button>
+                                title="TERMINATE_SESSION"
+                            >[X]</button>
                         )}
                     </div>
                 ))}
