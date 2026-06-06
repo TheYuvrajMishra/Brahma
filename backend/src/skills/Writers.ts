@@ -47,6 +47,10 @@ Tone/Style: ${tone}. Adapt the email style, vocabulary, and formatting to match 
 
 ${context ? `\nUse the following research context to write the email:\n${context}` : ''}
 
+CRITICAL RULES:
+- NO ATTACHMENTS: Brahma does NOT support email attachments. Never write boilerplate placeholders like "Please find the report attached" or "I have attached the document". You MUST write and inline the actual research findings, report contents, or requested details directly inside the email body itself.
+- Ensure the email is self-contained, detailed, and contains the actual reports/findings.
+
 MANDATORY OUTPUT FORMAT:
 Return ONLY the raw email body text.
 - Do NOT wrap the output in markdown code blocks (like \`\`\`text).
