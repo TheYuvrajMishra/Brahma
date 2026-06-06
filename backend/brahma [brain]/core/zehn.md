@@ -7,7 +7,6 @@
 
 ## Contextual Notes (Importance < 0.8)
 * Interested in Foontro and job opportunities
-* Open to emails
 * Romantic interest: Savaya (email: savayashikha571@gmail.com)
-* Tone preference for affection: informal and enthusiastic
-* Sought and received summary of last 5 emails on 2026-06-06T15:45:11.394Z
+* Tone preference for affection: informal and enthusiastic 
+* Received email summary on 2026-06-06T15:45:11.394Z

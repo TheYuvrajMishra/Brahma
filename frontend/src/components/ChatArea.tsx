@@ -62,7 +62,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                 <div className="message-content prose prose-sm max-w-none">
                                     {msg.role === 'assistant' ? (
                                         msg.isNew ? (
-                                            <TypewriterMarkdown content={msg.content} />
+                                            <TypewriterMarkdown 
+                                                content={msg.content} 
+                                                onUpdate={() => {
+                                                    const container = messagesEndRef.current?.parentElement;
+                                                    if (container) {
+                                                        container.scrollTop = container.scrollHeight;
+                                                    }
+                                                }}
+                                            />
                                         ) : (
                                             <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                         )
