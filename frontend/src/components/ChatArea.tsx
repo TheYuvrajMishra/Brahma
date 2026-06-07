@@ -191,7 +191,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 {/* Input Area: Glass Floating Pill */}
                 <form 
                     onSubmit={handleSubmit} 
-                    className="p-4 border-t border-white/5 bg-zinc-950/30 backdrop-blur-md flex justify-center z-10"
+                    className="p-4 flex justify-center z-10"
                 >
                     <div className="w-full max-w-3xl double-bezel-outer p-1 bg-white/[0.01] border border-white/5 rounded-full hover:border-white/10 focus-within:border-white/20 transition-all duration-300">
                         <div className="double-bezel-inner bg-[#070707]/90 rounded-full pl-6 pr-1.5 py-1.5 flex items-center justify-between">
