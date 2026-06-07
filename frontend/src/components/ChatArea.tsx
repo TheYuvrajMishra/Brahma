@@ -23,7 +23,7 @@ interface ChatAreaProps {
     setInputValue: (val: string) => void;
     handleSubmit: (e: React.FormEvent) => void;
     messagesEndRef: RefObject<HTMLDivElement | null>;
-    inputRef: RefObject<HTMLInputElement | null>;
+    inputRef: RefObject<HTMLTextAreaElement | null>;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -38,6 +38,27 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     messagesEndRef,
     inputRef,
 }) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            if (inputValue.trim()) {
+                handleSubmit(e as unknown as React.FormEvent);
+            }
+        }
+    };
+
+    React.useEffect(() => {
+        const textarea = inputRef.current;
+        if (!textarea) return;
+        
+        textarea.style.height = 'auto';
+        const scrollHeight = textarea.scrollHeight;
+        // Only set explicit height if the content wraps to multiple lines (scrollHeight > 45px)
+        if (scrollHeight > 45) {
+            textarea.style.height = `${Math.min(scrollHeight, 120)}px`;
+        }
+    }, [inputValue, inputRef]);
+
     const suggestedPrompts = [
         { label: "Analyze Core State", text: "Evaluate core system configuration and context state variables.", icon: <PiBrainLight className="w-4 h-4 text-purple-400" /> },
         { label: "Audit Telemetry", text: "Summarize the latest system audit logs and level distributions.", icon: <PiListDashesLight className="w-4 h-4 text-blue-400" /> },
@@ -93,7 +114,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 
 
                 {/* Messages Scroll Area */}
-                <div className="flex-1 overflow-y-auto px-6 py-8 flex flex-col gap-6 relative z-10">
+                <div className="flex-1 overflow-y-auto px-6 pt-8 pb-36 flex flex-col gap-6 relative z-10">
                     {messages.length === 0 && (
                         <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto text-center py-12">
                             <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] mb-3">
@@ -188,19 +209,32 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     <div ref={messagesEndRef} />
                 </div>
 
+                {/* Background Progressive Blur Overlay */}
+                <div 
+                    className="absolute bottom-0 left-0 right-0 h-48 pointer-events-none z-20"
+                    style={{
+                        background: 'linear-gradient(to top, rgba(5, 5, 5, 0.95) 0%, rgba(5, 5, 5, 0.5) 60%, transparent 100%)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        maskImage: 'linear-gradient(to top, black 30%, rgba(0, 0, 0, 0.5) 65%, transparent 100%)',
+                        WebkitMaskImage: 'linear-gradient(to top, black 30%, rgba(0, 0, 0, 0.5) 65%, transparent 100%)',
+                    }}
+                />
+
                 {/* Input Area: Glass Floating Pill */}
                 <form 
                     onSubmit={handleSubmit} 
-                    className="p-4 flex justify-center z-10"
+                    className="absolute bottom-0 left-0 right-0 p-6 flex justify-center z-30 pointer-events-none"
                 >
-                    <div className="w-full max-w-3xl double-bezel-outer p-1 bg-white/[0.01] border border-white/5 rounded-full hover:border-white/10 focus-within:border-white/20 transition-all duration-300">
-                        <div className="double-bezel-inner bg-[#070707]/90 rounded-full pl-6 pr-1.5 py-1.5 flex items-center justify-between">
-                            <input
+                    <div className="w-full max-w-3xl double-bezel-outer p-1 bg-white/[0.01] border border-white/5 rounded-3xl hover:border-white/10 focus-within:border-white/20 transition-all duration-300 pointer-events-auto shadow-2xl">
+                        <div className="double-bezel-inner bg-[#070707]/90 rounded-3xl pl-6 pr-1.5 py-1.5 flex items-center justify-between gap-3">
+                            <textarea
                                 ref={inputRef}
-                                type="text"
+                                rows={1}
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
-                                className="flex-1 bg-transparent py-2.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans"
+                                onKeyDown={handleKeyDown}
+                                className="flex-1 bg-transparent py-2.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans resize-none overflow-y-auto max-h-[120px]"
                                 placeholder="Execute command matrix string..."
                                 autoComplete="off"
                             />

@@ -19,7 +19,7 @@ export const PlaygroundPage: React.FC = () => {
     const [isTyping, setIsTyping] = useState(false);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null);
 
     // ── Bind Chat Events to Shared Socket ────────────────────────────
     useEffect(() => {
