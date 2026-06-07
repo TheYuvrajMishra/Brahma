@@ -11,7 +11,7 @@ export class Composer {
     static async compose(message: NormalizedMessage, routeBucket: string, executionLog?: ExecutionResult[], researchResult?: ResearchResult, intent: string = 'other'): Promise<PipelineResponse> {
         let soul = await MemoryManager.getSoul(message.channel_id);
         const moment = await MemoryManager.getMoment(message.channel_id);
-        const rawZehn = MemoryManager.getZehn();
+        const rawZehn = await MemoryManager.getZehn();
         const zehn = MemoryManager.getFilteredZehn(rawZehn, intent, message.content, moment);
         
         if (routeBucket === 'complex') {

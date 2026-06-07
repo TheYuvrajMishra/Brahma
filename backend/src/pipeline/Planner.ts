@@ -15,10 +15,10 @@ export interface PlanStep {
 export class Planner {
     static async plan(message: NormalizedMessage, researchResult?: ResearchResult, intent: string = 'other'): Promise<PlanStep[]> {
         const startTime = Date.now();
-        const plannerSchema = MemoryManager.getPlannerSchema();
-        const hunar = MemoryManager.getHunar();
+        const plannerSchema = await MemoryManager.getPlannerSchema();
+        const hunar = await MemoryManager.getHunar();
         const moment = await MemoryManager.getMoment(message.channel_id);
-        const rawZehn = MemoryManager.getZehn();
+        const rawZehn = await MemoryManager.getZehn();
         const zehn = MemoryManager.getFilteredZehn(rawZehn, intent, message.content, moment);
 
         // Build SCRP context injection if research was performed

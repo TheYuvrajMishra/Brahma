@@ -30,7 +30,7 @@ export class SetPersona implements ISkill {
 
         try {
             // Read default soul/personality definition
-            const defaultSoul = fs.readFileSync(path.join(config.brainPath, 'atman.md'), 'utf-8');
+            const defaultSoul = await fs.promises.readFile(path.join(config.brainPath, 'atman.md'), 'utf-8');
 
             const prompt = `
 You are a persona-generation engine.

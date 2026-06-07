@@ -13,18 +13,26 @@ export class MemoryManager {
                     return doc.customPersona;
                 }
             }
-            return fs.readFileSync(path.join(config.brainPath, 'atman.md'), 'utf-8');
+            return await fs.promises.readFile(path.join(config.brainPath, 'atman.md'), 'utf-8');
         } catch {
             return '';
         }
     }
 
-    static getZehn(): string {
+    static async getZehn(): Promise<string> {
         try {
-            return fs.readFileSync(path.join(config.brainPath, 'zehn.md'), 'utf-8');
+            return await fs.promises.readFile(path.join(config.brainPath, 'zehn.md'), 'utf-8');
         } catch {
             return '';
         }
+    }
+
+    private static matchKeyword(text: string, keyword: string): boolean {
+        const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const startBoundary = /^\w/.test(keyword) ? '\\b' : '';
+        const endBoundary = /\w$/.test(keyword) ? '\\b' : '';
+        const regex = new RegExp(`${startBoundary}${escaped}${endBoundary}`, 'i');
+        return regex.test(text);
     }
 
     static getFilteredZehn(rawZehn: string, intent: string, userMessage: string, recentTurns: string): string {
@@ -79,7 +87,7 @@ export class MemoryManager {
         }
         
         for (const [key, rule] of Object.entries(RULES)) {
-            if (rule.keywords.some(keyword => searchText.includes(keyword))) {
+            if (rule.keywords.some(keyword => this.matchKeyword(searchText, keyword))) {
                 activeCategories.add(key);
             }
         }
@@ -122,7 +130,7 @@ export class MemoryManager {
                 let matchesActive = false;
                 
                 for (const [key, rule] of Object.entries(RULES)) {
-                    if (rule.keywords.some(keyword => content.includes(keyword))) {
+                    if (rule.keywords.some(keyword => this.matchKeyword(content, keyword))) {
                         belongsToGated = true;
                         if (activeCategories.has(key)) {
                             matchesActive = true;
@@ -187,17 +195,17 @@ export class MemoryManager {
         }
     }
 
-    static getPlannerSchema(): string {
+    static async getPlannerSchema(): Promise<string> {
         try {
-            return fs.readFileSync(path.join(config.brainPath, 'planner.md'), 'utf-8');
+            return await fs.promises.readFile(path.join(config.brainPath, 'planner.md'), 'utf-8');
         } catch {
             return '';
         }
     }
 
-    static getHunar(): string {
+    static async getHunar(): Promise<string> {
         try {
-            return fs.readFileSync(path.join(config.brainPath, 'hunar.md'), 'utf-8');
+            return await fs.promises.readFile(path.join(config.brainPath, 'hunar.md'), 'utf-8');
         } catch {
             return '';
         }
@@ -212,7 +220,7 @@ export class MemoryManager {
                     { upsert: true }
                 );
             } else {
-                fs.writeFileSync(path.join(config.brainPath, 'moment.md'), content, 'utf-8');
+                await fs.promises.writeFile(path.join(config.brainPath, 'moment.md'), content, 'utf-8');
             }
         } catch (err) {
             console.error('Failed to write to moment:', err);
@@ -232,29 +240,29 @@ export class MemoryManager {
         }
     }
 
-    static updateZehn(content: string): void {
+    static async updateZehn(content: string): Promise<void> {
         try {
-            fs.writeFileSync(path.join(config.brainPath, 'zehn.md'), content, 'utf-8');
+            await fs.promises.writeFile(path.join(config.brainPath, 'zehn.md'), content, 'utf-8');
             Logger.audit('MEMORY_WRITE', { file: 'zehn.md', type: 'update', length: content.length });
         } catch (err) {
             console.error('Failed to write to zehn.md:', err);
         }
     }
 
-    static appendZehnFact(fact: string): void {
+    static async appendZehnFact(fact: string): Promise<void> {
         try {
-            const current = this.getZehn();
+            const current = await this.getZehn();
             const appendText = `\n- [${new Date().toISOString()}] ${fact}`;
-            fs.writeFileSync(path.join(config.brainPath, 'zehn.md'), current + appendText, 'utf-8');
+            await fs.promises.writeFile(path.join(config.brainPath, 'zehn.md'), current + appendText, 'utf-8');
             Logger.audit('MEMORY_WRITE', { file: 'zehn.md', type: 'append', fact });
         } catch (err) {
             console.error('Failed to append to zehn.md:', err);
         }
     }
 
-    static getResearcherConfig(): string {
+    static async getResearcherConfig(): Promise<string> {
         try {
-            return fs.readFileSync(path.join(config.brainPath, 'researcher.md'), 'utf-8');
+            return await fs.promises.readFile(path.join(config.brainPath, 'researcher.md'), 'utf-8');
         } catch {
             return '';
         }

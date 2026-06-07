@@ -64,7 +64,7 @@ Return ONLY the raw JSON, with no markdown ticks.
         await MemoryManager.updateMoment(updatedMoment, message.channel_id);
         
         for (const fact of newFacts) {
-            MemoryManager.appendZehnFact(fact);
+            await MemoryManager.appendZehnFact(fact);
         }
 
         Logger.info('Observer', message.message_id, Date.now() - startTime, 'SUCCESS');

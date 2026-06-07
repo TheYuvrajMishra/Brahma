@@ -6,10 +6,10 @@ dotenv.config();
 
 async function run() {
     console.log("Mocking MemoryManager...");
-    MemoryManager.getPlannerSchema = () => require('fs').readFileSync('./brahma [brain]/core/planner.md', 'utf-8');
-    MemoryManager.getHunar = () => require('fs').readFileSync('./brahma [brain]/core/hunar.md', 'utf-8');
-    MemoryManager.getMoment = () => require('fs').readFileSync('./brahma [brain]/core/moment.md', 'utf-8');
-    MemoryManager.getZehn = () => require('fs').readFileSync('./brahma [brain]/core/zehn.md', 'utf-8');
+    MemoryManager.getPlannerSchema = async () => require('fs').readFileSync('./brahma [brain]/core/planner.md', 'utf-8');
+    MemoryManager.getHunar = async () => require('fs').readFileSync('./brahma [brain]/core/hunar.md', 'utf-8');
+    MemoryManager.getMoment = async () => require('fs').readFileSync('./brahma [brain]/core/moment.md', 'utf-8');
+    MemoryManager.getZehn = async () => require('fs').readFileSync('./brahma [brain]/core/zehn.md', 'utf-8');
 
     // intercept LLMService.chat to print raw output
     const originalChat = LLMService.chat;
