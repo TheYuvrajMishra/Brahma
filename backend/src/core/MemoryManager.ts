@@ -74,6 +74,10 @@ export class MemoryManager {
             discord: {
                 keywords: ['discord', 'guild', 'channel', 'text channel', 'voice channel'],
                 category: 'discord'
+            },
+            spreadsheet: {
+                keywords: ['spreadsheet', 'sheet', 'sheets', 'google sheet', 'excel', 'row', 'column', 'cell'],
+                category: 'spreadsheet'
             }
         };
 
@@ -84,6 +88,8 @@ export class MemoryManager {
             activeCategories.add('ui');
         } else if (intent === 'emotional_support') {
             activeCategories.add('stress');
+        } else if (intent === 'spreadsheet_request') {
+            activeCategories.add('spreadsheet');
         }
         
         for (const [key, rule] of Object.entries(RULES)) {

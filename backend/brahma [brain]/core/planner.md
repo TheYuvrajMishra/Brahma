@@ -104,3 +104,53 @@ The Planner must output a validated JSON array of step objects:
   }
 ]
 ```
+
+### Example 4: Spreadsheet Create & Update Flow
+```json
+[
+  {
+    "step": 1,
+    "action": "create_new_spreadsheet",
+    "tool": "create-spreadsheet",
+    "params": {
+      "title": "Monthly Sales Report"
+    },
+    "depends_on": []
+  },
+  {
+    "step": 2,
+    "action": "extract_id_from_url",
+    "tool": "llm_call",
+    "params": {
+      "prompt": "Extract the Google Spreadsheet ID from the following output:\n\n{{step1}}"
+    },
+    "depends_on": [1]
+  },
+  {
+    "step": 3,
+    "action": "write_sales_headers",
+    "tool": "write-spreadsheet",
+    "params": {
+      "spreadsheetId": "{{step2}}",
+      "range": "Sheet1!A1:C1",
+      "values": [["Date", "Item Name", "Revenue"]]
+    },
+    "depends_on": [2]
+  },
+  {
+    "step": 4,
+    "action": "append_sales_data",
+    "tool": "append-spreadsheet",
+    "params": {
+      "spreadsheetId": "{{step2}}",
+      "range": "Sheet1!A2",
+      "values": [
+        ["2026-06-01", "AI Assistant Subscription", 150.00],
+        ["2026-06-02", "Developer API Credits", 299.99]
+      ]
+    },
+    "depends_on": [2]
+  }
+]
+```
+

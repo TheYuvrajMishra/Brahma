@@ -8,6 +8,14 @@ import { GetEmails } from '../skills/GetEmails';
 import { DiscordReply } from '../skills/DiscordReply';
 import { DiscordCreateChannel } from '../skills/DiscordCreateChannel';
 import { SetPersona } from '../skills/SetPersona';
+import {
+    CreateSpreadsheet,
+    FindSpreadsheet,
+    ReadSpreadsheet,
+    WriteSpreadsheet,
+    AppendSpreadsheet,
+    BatchUpdateSpreadsheet
+} from '../skills/GoogleSheets';
 
 class SkillRegistryClass {
     private skills: Map<string, ISkill> = new Map();
@@ -38,3 +46,10 @@ SkillRegistry.register(new GetEmails());
 SkillRegistry.register(new DiscordReply());
 SkillRegistry.register(new DiscordCreateChannel());
 SkillRegistry.register(new SetPersona());
+SkillRegistry.register(new CreateSpreadsheet());
+SkillRegistry.register(new FindSpreadsheet());
+SkillRegistry.register(new ReadSpreadsheet());
+SkillRegistry.register(new WriteSpreadsheet());
+SkillRegistry.register(new AppendSpreadsheet());
+SkillRegistry.register(new BatchUpdateSpreadsheet());
+

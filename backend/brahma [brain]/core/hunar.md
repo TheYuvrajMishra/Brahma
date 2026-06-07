@@ -58,3 +58,34 @@
 - **Description**: Updates the bot's persona for the current chat session or Discord channel context.
 - **Parameters**: `persona_description` (description of the target persona style/identity to adopt, e.g. "Salman Khan / Sallu Bhai", or "Brahma" to reset to default, required)
 - **Output**: Confirmation string indicating persona adaptation status.
+
+### create-spreadsheet
+- **Description**: Creates a new Google Spreadsheet on the user's Google Drive.
+- **Parameters**: `title` (optional string, name of the spreadsheet, defaults to "New Spreadsheet")
+- **Output**: Confirmation string including the newly created Spreadsheet's ID and URL.
+
+### find-spreadsheet
+- **Description**: Searches the user's Google Drive files for spreadsheets matching a search query/title.
+- **Parameters**: `query` (optional string, filename/title search query)
+- **Output**: A list of matching spreadsheets with their name, ID, and URL.
+
+### read-spreadsheet
+- **Description**: Reads and returns values from a cell range in a specified Google Spreadsheet.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `range` (optional string, cell range notation, e.g. "Sheet1!A1:D10", defaults to "Sheet1!A1:Z100")
+- **Output**: Text matrix representation of the spreadsheet cells.
+
+### write-spreadsheet
+- **Description**: Writes or overwrites cell values in a specified range of a Google Spreadsheet.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `range` (required string, cell range notation, e.g. "Sheet1!A1:D10"), `values` (required 2D array, or a 1D array representing a single row, or a JSON string representing the array of values to write)
+- **Output**: Confirmation of updated cells.
+
+### append-spreadsheet
+- **Description**: Appends one or more rows of values to the end of an existing range/sheet in a Google Spreadsheet.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `range` (optional string, cell range/sheet name notation, e.g. "Sheet1"), `values` (required 2D array, or a 1D array representing a single row, or a JSON string representing the array of values to append)
+- **Output**: Confirmation of the range where data was appended.
+
+### batch-update-spreadsheet
+- **Description**: Executes a batch of formatting/updating requests (e.g. column resizing, bold text, grid configurations, sheet renaming/addition) on a Google Spreadsheet.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `requests` (required array of request objects or JSON string of objects in the Google Sheets API v4 request format)
+- **Output**: Confirmation of executed batch operations.
+
