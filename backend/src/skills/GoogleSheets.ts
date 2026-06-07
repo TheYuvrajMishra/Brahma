@@ -23,8 +23,12 @@ function normalizeValues(valuesInput: any): any[][] {
         return [valuesInput]; // 1D array to 2D single row
     }
     if (typeof valuesInput === 'string') {
+        let cleanInput = valuesInput.trim();
+        if (cleanInput.startsWith('```')) {
+            cleanInput = cleanInput.replace(/^```[a-zA-Z0-9]*\n/, '').replace(/\n```$/, '').trim();
+        }
         try {
-            const parsed = JSON.parse(valuesInput);
+            const parsed = JSON.parse(cleanInput);
             if (Array.isArray(parsed)) {
                 return normalizeValues(parsed);
             }
@@ -229,8 +233,12 @@ export class BatchUpdateSpreadsheet implements ISkill {
         }
 
         if (typeof requests === 'string') {
+            let cleanRequests = requests.trim();
+            if (cleanRequests.startsWith('```')) {
+                cleanRequests = cleanRequests.replace(/^```[a-zA-Z0-9]*\n/, '').replace(/\n```$/, '').trim();
+            }
             try {
-                requests = JSON.parse(requests);
+                requests = JSON.parse(cleanRequests);
             } catch {
                 throw new Error('Failed to batch update: Invalid JSON string provided for requests parameter.');
             }
@@ -257,3 +265,116 @@ export class BatchUpdateSpreadsheet implements ISkill {
         }
     }
 }
+
+export class AddCheckboxes implements ISkill {
+    name = 'add-checkboxes';
+    description = 'Adds checkboxes (boolean data validation) to a specified range (e.g. Sheet1!C2:C100) in a Google Spreadsheet.';
+
+    async execute(params: any): Promise<string> {
+        const spreadsheetId = params.spreadsheetId;
+        const range = params.range;
+
+        if (!spreadsheetId || spreadsheetId === 'None') {
+            throw new Error('Failed to add checkboxes: No valid spreadsheetId provided.');
+        }
+        if (!range) {
+            throw new Error('Failed to add checkboxes: No range provided.');
+        }
+
+        try {
+            const auth = getOAuth2Client();
+            const sheets = google.sheets({ version: 'v4', auth });
+            
+            // Fetch sheet metadata to resolve sheetId
+            const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+            
+            let sheetName = 'Sheet1';
+            let a1Range = range;
+            if (range.includes('!')) {
+                const parts = range.split('!');
+                sheetName = parts[0].replace(/'/g, ''); // strip single quotes if any
+                a1Range = parts[1];
+            }
+
+            const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === sheetName);
+            if (!sheet) {
+                throw new Error(`Sheet "${sheetName}" not found in spreadsheet.`);
+            }
+            const sheetId = sheet.properties?.sheetId || 0;
+
+            const colNameToIndex = (name: string): number => {
+                let index = 0;
+                for (let i = 0; i < name.length; i++) {
+                    index = index * 26 + (name.charCodeAt(i) - 64);
+                }
+                return index - 1;
+            };
+
+            let startColumnIndex: number | undefined;
+            let endColumnIndex: number | undefined;
+            let startRowIndex: number | undefined;
+            let endRowIndex: number | undefined;
+
+            const rangeMatch = a1Range.match(/^([A-Z]+)(\d+)(?::([A-Z]+)(\d*))?$/i);
+            if (rangeMatch) {
+                const startColName = rangeMatch[1].toUpperCase();
+                startRowIndex = parseInt(rangeMatch[2], 10) - 1;
+                
+                if (rangeMatch[3]) {
+                    const endColName = rangeMatch[3].toUpperCase();
+                    startColumnIndex = colNameToIndex(startColName);
+                    endColumnIndex = colNameToIndex(endColName) + 1;
+                    
+                    if (rangeMatch[4]) {
+                        endRowIndex = parseInt(rangeMatch[4], 10);
+                    }
+                } else {
+                    // Single cell e.g. "C2"
+                    startColumnIndex = colNameToIndex(startColName);
+                    endColumnIndex = startColumnIndex + 1;
+                    endRowIndex = startRowIndex + 1;
+                }
+            } else {
+                // Column-only range e.g. "C:C"
+                const colRangeMatch = a1Range.match(/^([A-Z]+):([A-Z]+)$/i);
+                if (colRangeMatch) {
+                    startColumnIndex = colNameToIndex(colRangeMatch[1].toUpperCase());
+                    endColumnIndex = colNameToIndex(colRangeMatch[2].toUpperCase()) + 1;
+                } else {
+                    throw new Error(`Invalid range format "${range}". Expected formats like "Sheet1!C2:C100", "Sheet1!C2:C", or "Sheet1!C:C".`);
+                }
+            }
+
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId,
+                requestBody: {
+                    requests: [
+                        {
+                            setDataValidation: {
+                                range: {
+                                    sheetId,
+                                    startRowIndex,
+                                    endRowIndex,
+                                    startColumnIndex,
+                                    endColumnIndex
+                                },
+                                rule: {
+                                    condition: {
+                                        type: 'BOOLEAN'
+                                    },
+                                    showCustomUi: true
+                                }
+                            }
+                        }
+                    ]
+                }
+            });
+
+            return `Successfully added checkboxes to spreadsheet ID "${spreadsheetId}" in range "${range}".`;
+        } catch (err: any) {
+            console.error('[AddCheckboxes] Error:', err);
+            throw new Error(`Failed to add checkboxes: ${err.message}`);
+        }
+    }
+}
+

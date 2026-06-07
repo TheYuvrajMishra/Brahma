@@ -118,27 +118,18 @@ export class PipelineOrchestrator {
             // Append assistant response to moment.md for dialogue context
             try {
                 const momentContent = await MemoryManager.getMoment(message.channel_id);
-                if (momentContent.includes('## Recent Turns')) {
-                    const parts = momentContent.split('## Recent Turns');
-                    const recentTurnsText = parts[1].trim();
-                    const recentTurns = recentTurnsText ? recentTurnsText.split('\n').filter((line: string) => line.trim() !== '') : [];
-                    
-                    const cleanReply = response.content.replace(/\s+/g, ' ').trim();
-                    const truncatedReply = cleanReply.length > 150 ? cleanReply.substring(0, 150) + '...' : cleanReply;
-                    recentTurns.push(`Assistant: ${truncatedReply}`);
-                    
-                    while (recentTurns.length > 6) {
-                        recentTurns.shift();
-                    }
-                    
-                    const renumbered = recentTurns.map((line: string, idx: number) => {
-                        const content = line.replace(/^\d+\.\s*/, '');
-                        return `${idx + 1}. ${content}`;
-                    });
-                    
-                    const newMoment = parts[0] + '## Recent Turns\n' + renumbered.join('\n');
-                    await MemoryManager.updateMoment(newMoment, message.channel_id);
+                const momentData = MemoryManager.parseMoment(momentContent);
+                
+                const cleanReply = response.content.replace(/\s+/g, ' ').trim();
+                const truncatedReply = cleanReply.length > 2000 ? cleanReply.substring(0, 2000) + '...' : cleanReply;
+                momentData.turns.push(`Assistant: ${truncatedReply}`);
+                
+                while (momentData.turns.length > 6) {
+                    momentData.turns.shift();
                 }
+                
+                const newMoment = MemoryManager.formatMoment(momentData);
+                await MemoryManager.updateMoment(newMoment, message.channel_id);
             } catch (err) {
                 console.error('Failed to append assistant response to moment.md:', err);
             }

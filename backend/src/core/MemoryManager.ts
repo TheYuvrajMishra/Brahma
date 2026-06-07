@@ -201,6 +201,59 @@ export class MemoryManager {
         }
     }
 
+    static parseMoment(markdown: string): { topic: string; tone: string; activeTask: string; turns: string[] } {
+        const data = {
+            topic: 'Unknown',
+            tone: 'Unknown',
+            activeTask: 'None',
+            turns: [] as string[]
+        };
+
+        // Extract Topic
+        const topicMatch = markdown.match(/-\s+\*\*Current Topic\*\*:\s*([^\n]+)/i);
+        if (topicMatch) {
+            data.topic = topicMatch[1].trim();
+        }
+
+        // Extract Tone
+        const toneMatch = markdown.match(/-\s+\*\*Detected Tone\*\*:\s*([^\n]+)/i);
+        if (toneMatch) {
+            data.tone = toneMatch[1].trim();
+        }
+
+        // Extract Active Task
+        const taskMatch = markdown.match(/-\s+\*\*Active Task\*\*:\s*([^\n]+)/i);
+        if (taskMatch) {
+            data.activeTask = taskMatch[1].trim();
+        }
+
+        // Extract Turns
+        if (markdown.includes('## Recent Turns')) {
+            const parts = markdown.split('## Recent Turns');
+            const turnsText = parts[1].trim();
+            if (turnsText) {
+                const lines = turnsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                data.turns = lines.map(line => {
+                    return line.replace(/^\d+\.\s*/, '').trim();
+                });
+            }
+        }
+
+        return data;
+    }
+
+    static formatMoment(data: { topic: string; tone: string; activeTask: string; turns: string[] }): string {
+        const renumberedTurns = data.turns.map((turn, idx) => `${idx + 1}. ${turn}`).join('\n');
+        return `# Moment: Session Memory
+## Current Context
+- **Current Topic**: ${data.topic}
+- **Detected Tone**: ${data.tone}
+- **Active Task**: ${data.activeTask}
+
+## Recent Turns
+${renumberedTurns}`.trim();
+    }
+
     static async getPlannerSchema(): Promise<string> {
         try {
             return await fs.promises.readFile(path.join(config.brainPath, 'planner.md'), 'utf-8');

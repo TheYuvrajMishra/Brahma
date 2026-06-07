@@ -114,7 +114,10 @@ Return ONLY raw JSON, no markdown.`;
     }
 
     private static applyGateCheck(flaggedEntities: string[]): string[] {
+        const stopWords = new Set(['krdo', 'kardo', 'kro', 'karo', 'bhai', 'yaar', 'please', 'dena', 'karna', 'update', 'save', 'edit', 'put', 'add', 'insert']);
         return flaggedEntities.filter(entity => {
+            const clean = entity.toLowerCase().trim();
+            if (stopWords.has(clean)) return false;
             if (ContextStoreManager.has(entity)) { console.log(`[Researcher] Gate: "${entity}" cached — skip`); return false; }
             return true;
         });

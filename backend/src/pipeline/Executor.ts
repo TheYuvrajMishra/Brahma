@@ -99,10 +99,33 @@ export class Executor {
 
     private static interpolateParams(params: any, results: ExecutionResult[]): any {
         if (typeof params === 'string') {
-            return params.replace(/\{\{step(\d+)\}\}/g, (match, stepNumStr) => {
+            return params.replace(/\{\{step(\d+)(?:\.([a-zA-Z_0-9]+))?\}\}/g, (match, stepNumStr, property) => {
                 const stepNum = parseInt(stepNumStr, 10);
                 const referencedResult = results.find(r => r.step === stepNum);
-                return referencedResult ? referencedResult.output : match;
+                if (!referencedResult) return match;
+
+                // Strip thinking process block if present
+                let cleanOutput = referencedResult.output.trim();
+                cleanOutput = cleanOutput.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+                if (property) {
+                    try {
+                        let jsonOutput = cleanOutput;
+                        if (jsonOutput.startsWith('```')) {
+                            jsonOutput = jsonOutput.replace(/^```[a-zA-Z0-9]*\n/, '').replace(/\n```$/, '').trim();
+                        }
+                        const parsed = JSON.parse(jsonOutput);
+                        if (parsed && typeof parsed === 'object') {
+                            const val = parsed[property];
+                            if (val !== undefined) {
+                                return typeof val === 'object' ? JSON.stringify(val) : String(val);
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Failed to parse property ${property} from step ${stepNum} output:`, e);
+                    }
+                }
+                return cleanOutput;
             });
         } else if (Array.isArray(params)) {
             return params.map(item => this.interpolateParams(item, results));

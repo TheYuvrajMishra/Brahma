@@ -89,3 +89,8 @@
 - **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `requests` (required array of request objects or JSON string of objects in the Google Sheets API v4 request format)
 - **Output**: Confirmation of executed batch operations.
 
+### add-checkboxes
+- **Description**: Adds checkboxes (boolean data validation) to a specified range (e.g. Sheet1!C2:C100) in a Google Spreadsheet.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `range` (required string, cell range notation, e.g. "Sheet1!C2:C100")
+- **Output**: Confirmation string indicating checkbox addition status.
+

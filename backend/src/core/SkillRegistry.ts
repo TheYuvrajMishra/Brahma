@@ -14,7 +14,8 @@ import {
     ReadSpreadsheet,
     WriteSpreadsheet,
     AppendSpreadsheet,
-    BatchUpdateSpreadsheet
+    BatchUpdateSpreadsheet,
+    AddCheckboxes
 } from '../skills/GoogleSheets';
 
 class SkillRegistryClass {
@@ -52,4 +53,5 @@ SkillRegistry.register(new ReadSpreadsheet());
 SkillRegistry.register(new WriteSpreadsheet());
 SkillRegistry.register(new AppendSpreadsheet());
 SkillRegistry.register(new BatchUpdateSpreadsheet());
+SkillRegistry.register(new AddCheckboxes());
 
