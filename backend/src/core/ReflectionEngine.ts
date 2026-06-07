@@ -69,8 +69,11 @@ Execution Log: ${JSON.stringify(executionLog)}
 Final Response: ${finalResponse}
 
 Did we learn anything new about the user's preferences, constraints, or workflows that should be remembered for next time?
-MANDATORY: Output ONLY a single-sentence fact if yes, or "NONE" if no.
-Do NOT include markdown formatting, bullet points, headers, or any introductory conversational text.
+MANDATORY CONSTRAINTS:
+- Output ONLY a single-sentence fact if yes, or "NONE" if no.
+- Do NOT record system-level task execution status, tool performance, internal component configurations, or execution log messages.
+- The fact must focus strictly on the USER's profile, preferences, constraints, or work style (e.g. "User prefers Hinglish" or "User is CTO of Foontro").
+- Do NOT include markdown formatting, bullet points, headers, or any introductory conversational text.
         `.trim();
 
         try {
