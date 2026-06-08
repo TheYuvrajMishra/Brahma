@@ -28,7 +28,8 @@
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "test_e2e_flow.ts"
   ],
   "ts-node": {
     "transpileOnly": true

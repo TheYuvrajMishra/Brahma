@@ -37,7 +37,7 @@ export class Router {
 
         // 2. Rules: Simple constraints
         const words = text.split(/\s+/);
-        const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg', 'save', 'update', 'append', 'read', 'put', 'insert', 'add'];
+        const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg', 'save', 'update', 'append', 'read', 'put', 'insert', 'add', 'remove', 'delete', 'clear', 'fix', 'clean', 'format', 'design', 'style'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
         const moment = await MemoryManager.getMoment(message.channel_id);
@@ -50,10 +50,10 @@ export class Router {
                                isNumber ||
                                isSingleLetter;
 
-        // 2.3 Follow-up spreadsheet action rule (e.g. "krdo update", "save it")
+        // 2.3 Follow-up spreadsheet action rule (e.g. "krdo update", "save it", "remove extra ones", "hatao")
         const lowerText = text.toLowerCase();
-        const isFollowUpAction = lowerText.includes('update') || lowerText.includes('save') || lowerText.includes('do it') || lowerText.includes('krdo') || lowerText.includes('kardo') || lowerText.includes('kro');
-        const hasSpreadsheetContext = moment.toLowerCase().includes('spreadsheet') || moment.toLowerCase().includes('routine') || moment.toLowerCase().includes('sheet');
+        const isFollowUpAction = lowerText.includes('update') || lowerText.includes('save') || lowerText.includes('do it') || lowerText.includes('krdo') || lowerText.includes('kardo') || lowerText.includes('kro') || lowerText.includes('remove') || lowerText.includes('delete') || lowerText.includes('clear') || lowerText.includes('hatao') || lowerText.includes('hata') || lowerText.includes('kam karo') || lowerText.includes('clean') || lowerText.includes('fix');
+        const hasSpreadsheetContext = moment.toLowerCase().includes('spreadsheet') || moment.toLowerCase().includes('routine') || moment.toLowerCase().includes('sheet') || moment.toLowerCase().includes('checkbox');
         if (isFollowUpAction && hasSpreadsheetContext) {
             return {
                 bucket: 'complex',
@@ -77,7 +77,7 @@ export class Router {
             let determinedIntent: RouteResult['intent'] = 'other';
             if (text.includes('mail') || text.includes('email') || text.includes('send') || text.includes('msg') || text.includes('message')) {
                 determinedIntent = 'email_request';
-            } else if (text.includes('sheet') || text.includes('spreadsheet') || text.includes('excel')) {
+            } else if (text.includes('sheet') || text.includes('spreadsheet') || text.includes('excel') || text.includes('checkbox') || text.includes('checkboxes') || text.includes('routine') || text.includes('daily routine') || text.includes('column') || text.includes('row')) {
                 determinedIntent = 'spreadsheet_request';
             } else if (text.includes('research') || text.includes('summarize') || text.includes('analyze')) {
                 determinedIntent = 'research';

@@ -85,12 +85,43 @@
 - **Output**: Confirmation of the range where data was appended.
 
 ### batch-update-spreadsheet
-- **Description**: Executes a batch of formatting/updating requests (e.g. column resizing, bold text, grid configurations, sheet renaming/addition) on a Google Spreadsheet.
-- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `requests` (required array of request objects or JSON string of objects in the Google Sheets API v4 request format)
+- **Description**: Executes a batch of formatting/updating requests (e.g. column resizing, bold text, background colors, conditional formatting, sheet renaming/addition) on a Google Spreadsheet using the Google Sheets API v4 `batchUpdate` endpoint.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `requests` (required array of request objects in the Google Sheets API v4 format)
 - **Output**: Confirmation of executed batch operations.
+- **CRITICAL — Correct API field names** (wrong names cause 400 errors — use EXACTLY these):
+  - Header row formatting → `repeatCell` with a `GridRange` object (NOT a string range like `"Sheet1!A1"`):
+    ```json
+    { "repeatCell": { "range": { "sheetId": 0, "startRowIndex": 0, "endRowIndex": 1 }, "cell": { "userEnteredFormat": { "backgroundColor": { "red": 0.18, "green": 0.53, "blue": 0.76 }, "textFormat": { "foregroundColor": { "red": 1, "green": 1, "blue": 1 }, "bold": true }, "horizontalAlignment": "CENTER" } }, "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)" } }
+    ```
+  - Column width → `updateDimensionProperties` (NOT `updateColumnWidth`):
+    ```json
+    { "updateDimensionProperties": { "range": { "sheetId": 0, "dimension": "COLUMNS", "startIndex": 0, "endIndex": 1 }, "properties": { "pixelSize": 120 }, "fields": "pixelSize" } }
+    ```
+  - Alternating row colors → use the dedicated `replace-banding` skill (NOT `addBanding` directly inside batch-update-spreadsheet). `addBanding` will ALWAYS fail with "You cannot add alternating background colours to a range that already has alternating background colours" if banding exists. `replace-banding` auto-fetches and deletes existing banding first.
+  - **SPLIT RULE**: Never put banding operations in the same `batch-update-spreadsheet` call as `repeatCell` / `updateDimensionProperties`. Use `replace-banding` as a separate step.
+  - Checkboxes / data validation → use the dedicated `add-checkboxes` skill instead (NOT `addDataValidation` — that field does not exist in the API).
+  - Conditional formatting → `addConditionalFormatRule` with correct nesting (`booleanRule` inside `rule`, NOT `formatRule` inside `rule`):
+    ```json
+    { "addConditionalFormatRule": { "rule": { "ranges": [{ "sheetId": 0, "startRowIndex": 1 }], "booleanRule": { "condition": { "type": "CUSTOM_FORMULA", "values": [{ "userEnteredValue": "=$C2=TRUE" }] }, "format": { "backgroundColor": { "red": 0.66, "green": 0.85, "blue": 0.72 } } } }, "index": 0 } }
+    ```
+  - Freeze rows → `updateSheetProperties`:
+    ```json
+    { "updateSheetProperties": { "properties": { "sheetId": 0, "gridProperties": { "frozenRowCount": 1 } }, "fields": "gridProperties.frozenRowCount" } }
+    ```
 
 ### add-checkboxes
 - **Description**: Adds checkboxes (boolean data validation) to a specified range (e.g. Sheet1!C2:C100) in a Google Spreadsheet.
 - **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `range` (required string, cell range notation, e.g. "Sheet1!C2:C100")
 - **Output**: Confirmation string indicating checkbox addition status.
+
+### remove-checkboxes
+- **Description**: Removes / clears checkboxes (data validation) from a specified range in a Google Spreadsheet. Use this when the user says there are extra, excessive, or unwanted checkboxes and wants them removed.
+- **Parameters**: `spreadsheetId` (required string, target spreadsheet ID), `range` (required string, cell range notation covering the rows to clear, e.g. "Sheet1!C20:C100")
+- **Output**: Confirmation string indicating checkbox removal status.
+- **Usage pattern**: First use `read-spreadsheet` to see how many data rows exist, then call `remove-checkboxes` on the range of rows that should NOT have checkboxes (e.g. rows beyond the actual data).
+
+### replace-banding
+- **Description**: Safely replaces alternating row banding (zebra stripe colors) on a Google Spreadsheet. Automatically deletes any existing banding first, then adds new banding. Use this instead of `addBanding` inside `batch-update-spreadsheet` — direct `addBanding` will always fail if banding already exists.
+- **Parameters**: `spreadsheetId` (required string), `sheetId` (optional integer, default 0), `startRowIndex` (optional integer, default 1 — skip header row), `firstBandColor` (optional RGB object, default white), `secondBandColor` (optional RGB object, default light blue `{red:0.93, green:0.95, blue:1.0}`)
+- **Output**: Confirmation string indicating banding replacement status.
 

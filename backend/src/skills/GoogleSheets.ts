@@ -378,3 +378,169 @@ export class AddCheckboxes implements ISkill {
     }
 }
 
+export class RemoveCheckboxes implements ISkill {
+    name = 'remove-checkboxes';
+    description = 'Removes checkboxes (clears data validation) from a specified range in a Google Spreadsheet. Use this to clean up extra or unwanted checkboxes.';
+
+    async execute(params: any): Promise<string> {
+        const spreadsheetId = params.spreadsheetId;
+        const range = params.range;
+
+        if (!spreadsheetId || spreadsheetId === 'None') {
+            throw new Error('Failed to remove checkboxes: No valid spreadsheetId provided.');
+        }
+        if (!range) {
+            throw new Error('Failed to remove checkboxes: No range provided.');
+        }
+
+        try {
+            const auth = getOAuth2Client();
+            const sheets = google.sheets({ version: 'v4', auth });
+
+            // Fetch sheet metadata to resolve sheetId
+            const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId });
+
+            let sheetName = 'Sheet1';
+            let a1Range = range;
+            if (range.includes('!')) {
+                const parts = range.split('!');
+                sheetName = parts[0].replace(/'/g, '');
+                a1Range = parts[1];
+            }
+
+            const sheet = spreadsheet.data.sheets?.find(s => s.properties?.title === sheetName);
+            if (!sheet) {
+                throw new Error(`Sheet "${sheetName}" not found in spreadsheet.`);
+            }
+            const sheetId = sheet.properties?.sheetId || 0;
+
+            const colNameToIndex = (name: string): number => {
+                let index = 0;
+                for (let i = 0; i < name.length; i++) {
+                    index = index * 26 + (name.charCodeAt(i) - 64);
+                }
+                return index - 1;
+            };
+
+            let startColumnIndex: number | undefined;
+            let endColumnIndex: number | undefined;
+            let startRowIndex: number | undefined;
+            let endRowIndex: number | undefined;
+
+            const rangeMatch = a1Range.match(/^([A-Z]+)(\d+)(?::([A-Z]+)(\d*))?$/i);
+            if (rangeMatch) {
+                const startColName = rangeMatch[1].toUpperCase();
+                startRowIndex = parseInt(rangeMatch[2], 10) - 1;
+
+                if (rangeMatch[3]) {
+                    const endColName = rangeMatch[3].toUpperCase();
+                    startColumnIndex = colNameToIndex(startColName);
+                    endColumnIndex = colNameToIndex(endColName) + 1;
+                    if (rangeMatch[4]) {
+                        endRowIndex = parseInt(rangeMatch[4], 10);
+                    }
+                } else {
+                    startColumnIndex = colNameToIndex(startColName);
+                    endColumnIndex = startColumnIndex + 1;
+                    endRowIndex = startRowIndex + 1;
+                }
+            } else {
+                const colRangeMatch = a1Range.match(/^([A-Z]+):([A-Z]+)$/i);
+                if (colRangeMatch) {
+                    startColumnIndex = colNameToIndex(colRangeMatch[1].toUpperCase());
+                    endColumnIndex = colNameToIndex(colRangeMatch[2].toUpperCase()) + 1;
+                } else {
+                    throw new Error(`Invalid range format "${range}". Expected formats like "Sheet1!C2:C20", "Sheet1!C:C".`);
+                }
+            }
+
+            // setDataValidation with no rule = clears/removes validation (checkboxes)
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId,
+                requestBody: {
+                    requests: [
+                        {
+                            setDataValidation: {
+                                range: {
+                                    sheetId,
+                                    startRowIndex,
+                                    endRowIndex,
+                                    startColumnIndex,
+                                    endColumnIndex
+                                }
+                                // rule intentionally omitted = clears data validation
+                            }
+                        }
+                    ]
+                }
+            });
+
+            return `Successfully removed checkboxes from spreadsheet ID "${spreadsheetId}" in range "${range}".`;
+        } catch (err: any) {
+            console.error('[RemoveCheckboxes] Error:', err);
+            throw new Error(`Failed to remove checkboxes: ${err.message}`);
+        }
+    }
+}
+
+export class ReplaceBanding implements ISkill {
+    name = 'replace-banding';
+    description = 'Safely replaces (delete + re-add) alternating row banding colors on a Google Spreadsheet sheet. Handles the case where banding already exists by auto-fetching and deleting the existing bandedRangeId first.';
+
+    async execute(params: any): Promise<string> {
+        const spreadsheetId = params.spreadsheetId;
+        const sheetId: number = params.sheetId ?? 0;
+        const firstBandColor = params.firstBandColor ?? { red: 1, green: 1, blue: 1 };
+        const secondBandColor = params.secondBandColor ?? { red: 0.93, green: 0.95, blue: 1.0 };
+        const startRowIndex: number = params.startRowIndex ?? 1;
+
+        if (!spreadsheetId || spreadsheetId === 'None') {
+            throw new Error('Failed to replace banding: No valid spreadsheetId provided.');
+        }
+
+        try {
+            const auth = getOAuth2Client();
+            const sheets = google.sheets({ version: 'v4', auth });
+
+            // Step 1: Fetch all existing banded ranges on this sheet
+            const meta = await sheets.spreadsheets.get({ spreadsheetId });
+            const targetSheet = meta.data.sheets?.find(s => s.properties?.sheetId === sheetId);
+            const bandedRanges = targetSheet?.bandedRanges ?? [];
+
+            // Step 2: Delete all existing banding on this sheet
+            if (bandedRanges.length > 0) {
+                const deleteRequests = bandedRanges
+                    .filter(br => br.bandedRangeId !== undefined)
+                    .map(br => ({ deleteBanding: { bandedRangeId: br.bandedRangeId } }));
+
+                if (deleteRequests.length > 0) {
+                    await sheets.spreadsheets.batchUpdate({
+                        spreadsheetId,
+                        requestBody: { requests: deleteRequests }
+                    });
+                }
+            }
+
+            // Step 3: Add fresh banding
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId,
+                requestBody: {
+                    requests: [{
+                        addBanding: {
+                            bandedRange: {
+                                range: { sheetId, startRowIndex },
+                                rowProperties: { firstBandColor, secondBandColor }
+                            }
+                        }
+                    }]
+                }
+            });
+
+            return `Successfully replaced banding on spreadsheet ID "${spreadsheetId}" (sheetId: ${sheetId}).`;
+        } catch (err: any) {
+            console.error('[ReplaceBanding] Error:', err);
+            throw new Error(`Failed to replace banding: ${err.message}`);
+        }
+    }
+}
+
