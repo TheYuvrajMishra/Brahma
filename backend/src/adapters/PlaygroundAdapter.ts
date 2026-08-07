@@ -28,7 +28,7 @@ export class PlaygroundAdapter implements Adapter {
         // CORS and Json Middleware
         app.use((req, res, next) => {
             res.header('Access-Control-Allow-Origin', '*');
-            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-file-name');
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             if (req.method === 'OPTIONS') {
                 return res.sendStatus(200);
@@ -37,6 +37,35 @@ export class PlaygroundAdapter implements Adapter {
         });
         app.use(express.json());
         app.use(express.static(path.join(__dirname, '../../public')));
+
+        // Ensure temp uploads folder exists
+        const uploadDir = path.join(__dirname, '../../uploads');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        // File upload endpoint for converting document to markdown
+        app.post('/api/upload', (req, res) => {
+            let fileData: Buffer[] = [];
+            let fileName = req.headers['x-file-name'] ? String(req.headers['x-file-name']) : `upload_${Date.now()}`;
+            
+            req.on('data', chunk => fileData.push(chunk));
+            req.on('end', async () => {
+                try {
+                    const buffer = Buffer.concat(fileData);
+                    const safePath = path.join(uploadDir, `${Date.now()}_${fileName}`);
+                    fs.writeFileSync(safePath, buffer);
+
+                    const converter = new (require('../skills/ConvertDocument').ConvertDocumentToMarkdown)();
+                    const markdown = await converter.execute({ filePath: safePath });
+
+                    res.json({ success: true, fileName, filePath: safePath, markdown });
+                } catch (err: any) {
+                    console.error('[Upload] Failed to process document:', err);
+                    res.status(500).json({ success: false, error: err.message });
+                }
+            });
+        });
 
         // Google OAuth 2.0 Auth URL generator
         app.get('/api/auth/google/url', (req, res) => {

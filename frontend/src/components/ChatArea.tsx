@@ -1,4 +1,4 @@
-import React, { type RefObject } from 'react';
+import React, { type RefObject, useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { 
@@ -8,7 +8,9 @@ import {
     PiWifiSlashLight,
     PiSparkleLight,
     PiBrainLight,
-    PiListDashesLight
+    PiListDashesLight,
+    PiPaperclipLight,
+    PiSpinnerLight
 } from 'react-icons/pi';
 import type { Message, TelemetryStep } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
@@ -23,7 +25,7 @@ interface ChatAreaProps {
     currentTelemetry?: TelemetryStep[];
     inputValue: string;
     setInputValue: (val: string) => void;
-    handleSubmit: (e: React.FormEvent) => void;
+    handleSubmit: (e: React.FormEvent, convertedContext?: string) => void;
     messagesEndRef: RefObject<HTMLDivElement | null>;
     inputRef: RefObject<HTMLTextAreaElement | null>;
 }
@@ -41,11 +43,58 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     messagesEndRef,
     inputRef,
 }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [attachedFile, setAttachedFile] = useState<{ name: string; markdown: string } | null>(null);
+    const [uploadingFile, setUploadingFile] = useState(false);
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingFile(true);
+        try {
+            const host = window.location.hostname || 'localhost';
+            const res = await fetch(`http://${host}:3005/api/upload`, {
+                method: 'POST',
+                headers: {
+                    'x-file-name': file.name
+                },
+                body: file
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                setAttachedFile({
+                    name: file.name,
+                    markdown: data.markdown
+                });
+            } else {
+                alert(`Failed to convert file: ${data.error}`);
+            }
+        } catch (err: any) {
+            console.error('File conversion error:', err);
+            alert(`Error uploading file: ${err.message}`);
+        } finally {
+            setUploadingFile(false);
+            if (e.target) e.target.value = '';
+        }
+    };
+
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        let finalContext = '';
+        if (attachedFile) {
+            finalContext = `\n\n--- ATTACHED CONVERTED DOCUMENT (${attachedFile.name}) ---\n${attachedFile.markdown}`;
+        }
+        handleSubmit(e, finalContext);
+        setAttachedFile(null);
+    };
+
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            if (inputValue.trim()) {
-                handleSubmit(e as unknown as React.FormEvent);
+            if (inputValue.trim() || attachedFile) {
+                handleFormSubmit(e as unknown as React.FormEvent);
             }
         }
     };
@@ -236,11 +285,50 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                 {/* Input Area: Glass Floating Pill */}
                 <form 
-                    onSubmit={handleSubmit} 
+                    onSubmit={handleFormSubmit} 
                     className="absolute bottom-0 left-0 right-0 p-6 flex justify-center z-30 pointer-events-none"
                 >
-                    <div className="w-full max-w-3xl double-bezel-outer p-1 bg-white/[0.01] border border-white/5 rounded-3xl hover:border-white/10 focus-within:border-white/20 transition-all duration-300 pointer-events-auto shadow-2xl">
-                        <div className="double-bezel-inner bg-[#070707]/90 rounded-3xl pl-6 pr-1.5 py-1.5 flex items-center justify-between gap-3">
+                    <div className="w-full max-w-4xl double-bezel-outer p-1 bg-white/[0.01] border border-white/5 rounded-3xl hover:border-white/10 focus-within:border-white/20 transition-all duration-300 pointer-events-auto shadow-2xl">
+                        {/* Attached file chip indicator */}
+                        {attachedFile && (
+                            <div className="px-5 pt-2 flex items-center gap-2">
+                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono">
+                                    <PiPaperclipLight className="w-3.5 h-3.5" />
+                                    <span>{attachedFile.name}</span>
+                                    {uploadingFile ? (
+                                        <PiSpinnerLight className="w-3 h-3 animate-spin text-indigo-400" />
+                                    ) : (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setAttachedFile(null)} 
+                                            className="hover:text-white transition-colors ml-1"
+                                        >
+                                            ×
+                                        </button>
+                                    )}
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="double-bezel-inner bg-[#070707]/90 rounded-3xl pl-4 pr-1.5 py-1.5 flex items-center justify-between gap-2">
+                            {/* File Attachment Button */}
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                className="hidden" 
+                                accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md"
+                                onChange={handleFileSelect}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                disabled={uploadingFile}
+                                title="Attach Document (PDF, DOCX, XLSX, CSV)"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-all shrink-0"
+                            >
+                                <PiPaperclipLight className="w-4 h-4" />
+                            </button>
+
                             <textarea
                                 ref={inputRef}
                                 rows={1}
@@ -248,13 +336,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyDown={handleKeyDown}
                                 className="flex-1 bg-transparent py-2.5 text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans resize-none overflow-y-auto max-h-[120px]"
-                                placeholder="Execute command matrix string..."
+                                placeholder={attachedFile ? `Ask something about ${attachedFile.name}...` : "Execute command matrix string..."}
                                 autoComplete="off"
                             />
                             <button 
                                 type="submit" 
                                 className="cta-pill-button active:scale-[0.97]"
-                                disabled={!inputValue.trim()}
+                                disabled={!inputValue.trim() && !attachedFile}
                             >
                                 <span className="font-display font-medium text-xs">Execute</span>
                                 <div className="cta-icon-wrapper">

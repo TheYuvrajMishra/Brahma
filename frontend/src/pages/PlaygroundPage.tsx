@@ -86,13 +86,18 @@ export const PlaygroundPage: React.FC = () => {
     }, [messages, isTyping]);
 
     // ── Send Message ──────────────────────────────────────────────────
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: React.FormEvent, convertedContext?: string) => {
         e.preventDefault();
-        const text = inputValue.trim();
+        let text = inputValue.trim();
+        if (!text && convertedContext) {
+            text = "Please analyze the attached document and summarize key details.";
+        }
         if (!text || !socket || !activeSessionId) return;
 
+        const fullMessageText = convertedContext ? `${text}${convertedContext}` : text;
+
         setMessages(prev => [...prev, { role: 'user', content: text, timestamp: new Date().toISOString() }]);
-        socket.emit('chat message', { text, sessionId: activeSessionId });
+        socket.emit('chat message', { text: fullMessageText, sessionId: activeSessionId });
         setInputValue('');
     };
 

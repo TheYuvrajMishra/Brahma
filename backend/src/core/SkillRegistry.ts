@@ -19,6 +19,7 @@ import {
     RemoveCheckboxes,
     ReplaceBanding
 } from '../skills/GoogleSheets';
+import { ConvertDocumentToMarkdown } from '../skills/ConvertDocument';
 
 class SkillRegistryClass {
     private skills: Map<string, ISkill> = new Map();
@@ -58,4 +59,5 @@ SkillRegistry.register(new BatchUpdateSpreadsheet());
 SkillRegistry.register(new AddCheckboxes());
 SkillRegistry.register(new RemoveCheckboxes());
 SkillRegistry.register(new ReplaceBanding());
+SkillRegistry.register(new ConvertDocumentToMarkdown());
 

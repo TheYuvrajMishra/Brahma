@@ -125,3 +125,9 @@
 - **Parameters**: `spreadsheetId` (required string), `sheetId` (optional integer, default 0), `startRowIndex` (optional integer, default 1 — skip header row), `firstBandColor` (optional RGB object, default white), `secondBandColor` (optional RGB object, default light blue `{red:0.93, green:0.95, blue:1.0}`)
 - **Output**: Confirmation string indicating banding replacement status.
 
+### convert-document
+- **Description**: Converts local document files (PDF, DOCX/DOC, XLSX/XLS/CSV, TXT, MD) into clean structured Markdown text for AI context consumption.
+- **Parameters**: `filePath` (required string, path to the document file on disk)
+- **Output**: A Markdown formatted string containing the full text and tables extracted from the document.
+
+
