@@ -14,6 +14,7 @@ export class PlaygroundAdapter implements Adapter {
     private onMessageCallback: ((msg: NormalizedMessage) => void) | null = null;
     private socketMap: Map<string, Socket> = new Map(); // message_id -> Socket
     private sessionMap: Map<string, string> = new Map(); // message_id -> sessionId
+    private telemetryMap: Map<string, any[]> = new Map(); // message_id -> TelemetryStep[]
 
     constructor(private port: number = 3005) {
         const app = express();
@@ -309,6 +310,7 @@ export class PlaygroundAdapter implements Adapter {
 
                 const messageId = `playground_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
                 this.socketMap.set(messageId, socket);
+                this.telemetryMap.set(messageId, []);
                 if (sessionId) this.sessionMap.set(messageId, sessionId);
 
                 // Save user message to session
@@ -357,14 +359,20 @@ export class PlaygroundAdapter implements Adapter {
 
     private setupTelemetryBus() {
         const sendTelemetry = (messageId: string, event: string, data: any) => {
+            const telemetryStep = {
+                id: event + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                event,
+                timestamp: new Date().toISOString(),
+                ...data
+            };
+
+            const steps = this.telemetryMap.get(messageId) || [];
+            steps.push(telemetryStep);
+            this.telemetryMap.set(messageId, steps);
+
             const socket = this.socketMap.get(messageId);
             if (socket) {
-                socket.emit('telemetry', {
-                    messageId,
-                    event,
-                    timestamp: new Date().toISOString(),
-                    ...data
-                });
+                socket.emit('telemetry', telemetryStep);
             }
         };
 
@@ -441,6 +449,8 @@ export class PlaygroundAdapter implements Adapter {
 
     async emit(response: PipelineResponse): Promise<void> {
         const socket = this.socketMap.get(response.originalMessage.message_id);
+        const telemetryLogs = this.telemetryMap.get(response.originalMessage.message_id) || [];
+
         if (socket) {
             socket.emit('typing', false);
             socket.emit('chat response', response.content);
@@ -452,7 +462,12 @@ export class PlaygroundAdapter implements Adapter {
                 try {
                     const session = await ChatSession.findOne({ sessionId });
                     if (session) {
-                        session.messages.push({ role: 'assistant', content: response.content, timestamp: new Date() });
+                        session.messages.push({ 
+                            role: 'assistant', 
+                            content: response.content, 
+                            timestamp: new Date(),
+                            telemetry: telemetryLogs.length > 0 ? telemetryLogs : undefined 
+                        });
                         await session.save();
 
                         // Notify frontend that the session title may have been updated
@@ -466,5 +481,6 @@ export class PlaygroundAdapter implements Adapter {
         } else {
             console.warn(`[PlaygroundAdapter] Socket not found for message ${response.originalMessage.message_id}`);
         }
+        this.telemetryMap.delete(response.originalMessage.message_id);
     }
 }

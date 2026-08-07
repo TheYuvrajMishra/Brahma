@@ -4,6 +4,7 @@ export interface IChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    telemetry?: any[];
 }
 
 export interface IChatSession extends Document {
@@ -18,6 +19,7 @@ const ChatMessageSchema = new Schema<IChatMessage>({
     role: { type: String, enum: ['user', 'assistant'], required: true },
     content: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
+    telemetry: { type: Schema.Types.Mixed, default: undefined }
 });
 
 const ChatSessionSchema = new Schema<IChatSession>({
