@@ -6,15 +6,13 @@ import {
     PiArrowUpLight, 
     PiWifiHighLight, 
     PiWifiSlashLight,
-    PiSparkleLight,
-    PiBrainLight,
-    PiListDashesLight,
     PiPaperclipLight,
     PiSpinnerLight
 } from 'react-icons/pi';
 import type { Message, TelemetryStep } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
 import { ProcessTelemetryAccordion } from './ProcessTelemetryAccordion';
+import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
 
 interface ChatAreaProps {
     sidebarOpen: boolean;
@@ -111,11 +109,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         }
     }, [inputValue, inputRef]);
 
-    const suggestedPrompts = [
-        { label: "Analyze Core State", text: "Evaluate core system configuration and context state variables.", icon: <PiBrainLight className="w-4 h-4 text-purple-400" /> },
-        { label: "Audit Telemetry", text: "Summarize the latest system audit logs and level distributions.", icon: <PiListDashesLight className="w-4 h-4 text-blue-400" /> },
-        { label: "Check Connections", text: "Verify connection status and list active session configurations.", icon: <PiSparkleLight className="w-4 h-4 text-emerald-400" /> }
-    ];
+
 
     return (
         <div className="main-area flex flex-col h-full">
@@ -168,39 +162,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 <div className="flex-1 overflow-y-auto px-4 sm:px-8 pt-8 pb-36 flex flex-col relative z-10 w-full">
                     <div className="max-w-5xl w-full mx-auto flex flex-col gap-6">
                         {messages.length === 0 && (
-                            <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto text-center py-12">
-                                <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-[0.2em] mb-3">
-                                    [ CORE COGNITIVE SYSTEM ]
-                                </span>
-                                <h2 className="font-display font-medium text-2xl text-white/90 tracking-tight mb-2">
-                                    Awaiting Command String
-                                </h2>
-                                <p className="text-xs text-zinc-400 leading-relaxed mb-8">
-                                    Feed raw cognitive commands or trigger pre-configured telemetry operations below to start the interaction sequence.
-                                </p>
-
-                                {/* Suggestion Bento Grid */}
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
-                                    {suggestedPrompts.map((p, idx) => (
-                                        <div
-                                            key={idx}
-                                            onClick={() => {
-                                                setInputValue(p.text);
-                                                inputRef.current?.focus();
-                                            }}
-                                            className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/10 cursor-pointer text-left transition-all duration-300 hover:-translate-y-0.5 active:scale-98 flex flex-col justify-between h-32"
-                                        >
-                                            <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-3">
-                                                {p.icon}
-                                            </div>
-                                            <div>
-                                                <h4 className="text-xs font-semibold text-white/90 mb-1">{p.label}</h4>
-                                                <p className="text-[10px] text-zinc-500 line-clamp-2 leading-normal">{p.text}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                            <InteractiveN8nCanvas />
                         )}
 
                         {messages.map((msg, i) => (
