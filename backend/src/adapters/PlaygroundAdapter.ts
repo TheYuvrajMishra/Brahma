@@ -7,6 +7,7 @@ import { Adapter } from './Adapter';
 import { NormalizedMessage, PipelineResponse } from '../types/Message';
 import { ChatSession } from '../models/ChatSession';
 import { config } from '../config';
+import { EventBus, SystemEvents } from '../core/EventBus';
 
 export class PlaygroundAdapter implements Adapter {
     private io: Server;
@@ -20,6 +21,8 @@ export class PlaygroundAdapter implements Adapter {
         this.io = new Server(httpServer, {
             cors: { origin: '*' }
         });
+
+        this.setupTelemetryBus();
 
         // CORS and Json Middleware
         app.use((req, res, next) => {
@@ -98,6 +101,7 @@ export class PlaygroundAdapter implements Adapter {
 
                 // Fetch user info for UI confirmation
                 let email = '';
+                let picture = '';
                 if (tokens.access_token) {
                     try {
                         const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -105,6 +109,7 @@ export class PlaygroundAdapter implements Adapter {
                         });
                         const userData: any = await userRes.json();
                         email = userData.email || '';
+                        picture = userData.picture || '';
                         if (email) {
                             process.env.GMAIL_WATCH_ADDRESS = email;
                         }
@@ -113,7 +118,7 @@ export class PlaygroundAdapter implements Adapter {
                     }
                 }
 
-                this.io.emit('google:connected', { connected: true, email: email || process.env.GMAIL_WATCH_ADDRESS });
+                this.io.emit('google:connected', { connected: true, email: email || process.env.GMAIL_WATCH_ADDRESS, picture });
 
                 res.send(`
                     <html>
@@ -347,6 +352,85 @@ export class PlaygroundAdapter implements Adapter {
 
         httpServer.listen(this.port, () => {
             console.log(`[Playground] Web UI running at http://localhost:${this.port}`);
+        });
+    }
+
+    private setupTelemetryBus() {
+        const sendTelemetry = (messageId: string, event: string, data: any) => {
+            const socket = this.socketMap.get(messageId);
+            if (socket) {
+                socket.emit('telemetry', {
+                    messageId,
+                    event,
+                    timestamp: new Date().toISOString(),
+                    ...data
+                });
+            }
+        };
+
+        EventBus.on(SystemEvents.ROUTING_COMPLETE, ({ message, routeResult }) => {
+            sendTelemetry(message.message_id, 'ROUTING_COMPLETE', {
+                stage: 'Router / Intent Analysis',
+                label: `Routed prompt to [${routeResult.bucket}] bucket`,
+                details: routeResult
+            });
+        });
+
+        EventBus.on(SystemEvents.RESEARCH_STARTED, ({ message }) => {
+            sendTelemetry(message.message_id, 'RESEARCH_STARTED', {
+                stage: 'Context Core / SCRP Research',
+                label: 'Evaluating memory & system state...'
+            });
+        });
+
+        EventBus.on(SystemEvents.RESEARCH_COMPLETE, ({ message, researchResult }) => {
+            sendTelemetry(message.message_id, 'RESEARCH_COMPLETE', {
+                stage: 'Context Core / SCRP Research',
+                label: researchResult.research_required
+                    ? `Context gathered: ${researchResult.context_store.entries.length} entities`
+                    : 'Research check complete (no deep query required)',
+                details: researchResult
+            });
+        });
+
+        EventBus.on(SystemEvents.PLANNING_STARTED, ({ message }) => {
+            sendTelemetry(message.message_id, 'PLANNING_STARTED', {
+                stage: 'Zehn / Core Planner',
+                label: 'Formulating step execution matrix...'
+            });
+        });
+
+        EventBus.on(SystemEvents.PLANNING_COMPLETE, ({ message, plan }) => {
+            sendTelemetry(message.message_id, 'PLANNING_COMPLETE', {
+                stage: 'Zehn / Core Planner',
+                label: `Plan constructed with ${plan.length} step(s)`,
+                plan
+            });
+        });
+
+        EventBus.on(SystemEvents.STEP_EXECUTION_START, ({ message, step }) => {
+            sendTelemetry(message.message_id, 'STEP_EXECUTION_START', {
+                stage: `Executor / Tool: ${step.tool}`,
+                label: `Invoking skill [${step.tool}] for action: "${step.action}"`,
+                step
+            });
+        });
+
+        EventBus.on(SystemEvents.STEP_EXECUTION_COMPLETE, ({ message, step, status, outputSummary }) => {
+            sendTelemetry(message.message_id, 'STEP_EXECUTION_COMPLETE', {
+                stage: `Executor / Tool: ${step.tool}`,
+                label: `Skill [${step.tool}] returned status [${status}]`,
+                step,
+                status,
+                outputSummary
+            });
+        });
+
+        EventBus.on(SystemEvents.COMPOSING_STARTED, ({ message }) => {
+            sendTelemetry(message.message_id, 'COMPOSING_STARTED', {
+                stage: 'Composer / Synthesis',
+                label: 'Synthesizing tool outputs into response...'
+            });
         });
     }
 

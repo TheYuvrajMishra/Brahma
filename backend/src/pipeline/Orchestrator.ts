@@ -80,6 +80,7 @@ export class PipelineOrchestrator {
             EventBus.emit(SystemEvents.ROUTING_COMPLETE, { message, routeResult });
 
             // 3.1. SCRP Research (Phase 0-2, uses only 1 LLM call)
+            EventBus.emit(SystemEvents.RESEARCH_STARTED, { message });
             const researchStartTime = Date.now();
             const researchResult = await Researcher.research(message, routeResult.bucket);
             Logger.info('Researcher', message.message_id, Date.now() - researchStartTime, 'SUCCESS', {
@@ -87,12 +88,14 @@ export class PipelineOrchestrator {
                 entries: researchResult.context_store.entries.length,
                 searches: researchResult.context_store.total_searches_executed,
             });
+            EventBus.emit(SystemEvents.RESEARCH_COMPLETE, { message, researchResult });
 
             // 3.5. Plan & Execute
             let executionLog: ExecutionResult[] | undefined = undefined;
             if (routeResult.bucket === 'complex') {
+                EventBus.emit(SystemEvents.PLANNING_STARTED, { message });
                 const plan = await Planner.plan(message, researchResult, routeResult.intent);
-                EventBus.emit('PLANNING_COMPLETE', { message, plan });
+                EventBus.emit(SystemEvents.PLANNING_COMPLETE, { message, plan });
                 
                 if (plan.length > 0) {
                     executionLog = await Executor.execute(plan, message);
@@ -111,6 +114,7 @@ export class PipelineOrchestrator {
             }
 
             // 4. Compose
+            EventBus.emit(SystemEvents.COMPOSING_STARTED, { message });
             const composeStartTime = Date.now();
             const response = await Composer.compose(message, routeResult.bucket, executionLog, researchResult, routeResult.intent);
             Logger.info('Composer', message.message_id, Date.now() - composeStartTime, 'SUCCESS');

@@ -17,27 +17,54 @@ export const PlaygroundPage: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [currentTelemetry, setCurrentTelemetry] = useState<any[]>([]);
     
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // ── Bind Chat Events to Shared Socket ────────────────────────────
+    // ── Bind Chat Events & Telemetry to Shared Socket ────────────────────────────
     useEffect(() => {
         if (!socket) return;
 
-        const handleTyping = (state: boolean) => { setIsTyping(state); };
+        const handleTyping = (state: boolean) => { 
+            setIsTyping(state); 
+            if (state) {
+                setCurrentTelemetry([]);
+            }
+        };
+
+        const handleTelemetry = (data: any) => {
+            setCurrentTelemetry(prev => [...prev, {
+                id: data.event + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                event: data.event,
+                stage: data.stage,
+                label: data.label,
+                timestamp: data.timestamp,
+                details: data.details || data.plan || data.step || null
+            }]);
+        };
+
         const handleChatResponse = (msg: string) => {
-            setMessages(prev => [...prev, { role: 'assistant', content: msg, timestamp: new Date().toISOString(), isNew: true }]);
+            setMessages(prev => [...prev, { 
+                role: 'assistant', 
+                content: msg, 
+                timestamp: new Date().toISOString(), 
+                isNew: true,
+                telemetry: currentTelemetry.length > 0 ? [...currentTelemetry] : undefined
+            }]);
+            setCurrentTelemetry([]);
         };
 
         socket.on('typing', handleTyping);
+        socket.on('telemetry', handleTelemetry);
         socket.on('chat response', handleChatResponse);
 
         return () => {
             socket.off('typing', handleTyping);
+            socket.off('telemetry', handleTelemetry);
             socket.off('chat response', handleChatResponse);
         };
-    }, [socket]);
+    }, [socket, currentTelemetry]);
 
     // ── Load messages when active session changes ─────────────────────
     useEffect(() => {
@@ -76,6 +103,7 @@ export const PlaygroundPage: React.FC = () => {
             connected={connected}
             messages={messages}
             isTyping={isTyping}
+            currentTelemetry={currentTelemetry}
             inputValue={inputValue}
             setInputValue={setInputValue}
             handleSubmit={handleSubmit}

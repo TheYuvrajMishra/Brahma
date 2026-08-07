@@ -2,6 +2,7 @@ import { PlanStep } from './Planner';
 import { Logger } from '../core/Logger';
 import { NormalizedMessage } from '../types/Message';
 import { SkillRegistry } from '../core/SkillRegistry';
+import { EventBus, SystemEvents } from '../core/EventBus';
 
 export interface ExecutionResult {
     step: number;
@@ -43,6 +44,7 @@ export class Executor {
                 attempts++;
                 try {
                     Logger.info('Executor', message.message_id, 0, `Executing step ${step.step}`, { tool: step.tool, attempt: attempts });
+                    EventBus.emit(SystemEvents.STEP_EXECUTION_START, { message, step });
                     
                     // Gather outputs from dependencies
                     const depOutputs = step.depends_on.map(dep => {
@@ -65,6 +67,7 @@ export class Executor {
                     output = await SkillRegistry.runSkill(step.tool, paramsToRun);
                     
                     Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: interpolatedParams, outputLength: output.length, status: 'success' });
+                    EventBus.emit(SystemEvents.STEP_EXECUTION_COMPLETE, { message, step, status: 'success', outputSummary: output.substring(0, 150) });
                     
                     success = true;
                 } catch (err) {
