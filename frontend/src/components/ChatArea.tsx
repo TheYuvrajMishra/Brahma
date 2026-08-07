@@ -157,70 +157,46 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         {messages.map((msg, i) => (
                             <div 
                                 key={i} 
-                                className={`flex w-full gap-3.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {msg.role === 'user' ? (
-                                    <>
-                                        <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5">
-                                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                                        </div>
-                                        {/* User Avatar DP */}
-                                        <div className="w-7 h-7 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden mt-1 shadow-sm">
-                                            <svg className="w-4 h-4 text-zinc-300" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                            </svg>
-                                        </div>
-                                    </>
+                                    <div className="max-w-[85%] rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5">
+                                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                                    </div>
                                 ) : (
-                                    <>
-                                        {/* Standalone White Gemini Star SVG Icon */}
-                                        <div className="w-6 h-6 flex items-center justify-center shrink-0 mt-1">
-                                            <svg className="w-5 h-5 text-white/95" viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0Z" />
-                                            </svg>
-                                        </div>
+                                    <div className="flex-1 max-w-[95%] py-0.5 select-text">
+                                        {/* Telemetry Execution Thoughts Accordion */}
+                                        {msg.telemetry && msg.telemetry.length > 0 && (
+                                            <ProcessTelemetryAccordion 
+                                                telemetry={msg.telemetry} 
+                                                isLive={false} 
+                                                defaultExpanded={false}
+                                            />
+                                        )}
 
-                                        <div className="flex-1 max-w-[94%] py-0.5 select-text">
-                                            {/* Telemetry Execution Thoughts Accordion */}
-                                            {msg.telemetry && msg.telemetry.length > 0 && (
-                                                <ProcessTelemetryAccordion 
-                                                    telemetry={msg.telemetry} 
-                                                    isLive={false} 
-                                                    defaultExpanded={false}
+                                        <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans">
+                                            {msg.isNew ? (
+                                                <TypewriterMarkdown 
+                                                    content={msg.content} 
+                                                    onUpdate={() => {
+                                                        const container = messagesEndRef.current?.parentElement;
+                                                        if (container) {
+                                                            container.scrollTop = container.scrollHeight;
+                                                        }
+                                                    }}
                                                 />
+                                            ) : (
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                             )}
-
-                                            <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans">
-                                                {msg.isNew ? (
-                                                    <TypewriterMarkdown 
-                                                        content={msg.content} 
-                                                        onUpdate={() => {
-                                                            const container = messagesEndRef.current?.parentElement;
-                                                            if (container) {
-                                                                container.scrollTop = container.scrollHeight;
-                                                            }
-                                                        }}
-                                                    />
-                                                ) : (
-                                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                                                )}
-                                            </div>
                                         </div>
-                                    </>
+                                    </div>
                                 )}
                             </div>
                         ))}
                         
                         {isTyping && (
-                            <div className="flex w-full gap-3.5 justify-start items-start">
-                                {/* Standalone White Gemini Star SVG Icon */}
-                                <div className="w-6 h-6 flex items-center justify-center shrink-0 mt-1">
-                                    <svg className="w-5 h-5 text-white/95 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 0C12 6.62742 6.62742 12 0 12C6.62742 12 12 17.3726 12 24C12 17.3726 17.3726 12 24 12C17.3726 12 12 6.62742 12 0Z" />
-                                    </svg>
-                                </div>
-
-                                <div className="flex-1 max-w-[94%]">
+                            <div className="flex w-full justify-start items-start">
+                                <div className="flex-1 max-w-[95%]">
                                     {currentTelemetry && currentTelemetry.length > 0 ? (
                                         <ProcessTelemetryAccordion 
                                             telemetry={currentTelemetry} 

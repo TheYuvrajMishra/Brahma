@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PiCaretDownLight, PiCaretRightLight, PiSparkleLight, PiCheckCircleLight } from 'react-icons/pi';
+import { PiCaretDownLight, PiCaretRightLight, PiClockLight, PiCheckCircleLight } from 'react-icons/pi';
 import type { TelemetryStep } from '../types';
 
 interface ProcessTelemetryAccordionProps {
@@ -17,15 +17,11 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
 
     if (!telemetry || telemetry.length === 0) return null;
 
-    const firstTime = telemetry[0]?.timestamp ? new Date(telemetry[0].timestamp).getTime() : Date.now();
-    const lastTime = telemetry[telemetry.length - 1]?.timestamp ? new Date(telemetry[telemetry.length - 1].timestamp).getTime() : Date.now();
-    const durationSec = Math.max(1, Math.round((lastTime - firstTime) / 1000));
-
     const activeStep = telemetry[telemetry.length - 1];
 
     return (
         <div className="w-full my-1.5 text-xs font-sans">
-            {/* Claude-style Minimal Single Line Pill */}
+            {/* Minimalist Single Line Pill */}
             <button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
@@ -37,9 +33,9 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
 
                 <div className="flex items-center gap-2 overflow-hidden">
                     {isLive ? (
-                        <PiSparkleLight className="w-3.5 h-3.5 text-amber-400 animate-pulse shrink-0" />
+                        <PiClockLight className="w-3.5 h-3.5 text-zinc-300 animate-spin shrink-0" />
                     ) : (
-                        <PiCheckCircleLight className="w-3.5 h-3.5 text-emerald-400/90 shrink-0" />
+                        <PiCheckCircleLight className="w-3.5 h-3.5 text-white shrink-0" />
                     )}
                     
                     {/* Animated Step Label */}
@@ -49,7 +45,7 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                     >
                         {isLive 
                             ? `Thinking... ${activeStep?.label || ''}` 
-                            : `Thought for ${durationSec} second${durationSec > 1 ? 's' : ''}`
+                            : 'Done'
                         }
                     </span>
                 </div>
@@ -62,15 +58,15 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                         /* Live Single Active Step View */
                         <div key={activeStep?.id} className="space-y-1.5 animate-fadeIn">
                             <div className="flex items-center gap-2 text-zinc-200 font-medium">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+                                <PiClockLight className="w-3.5 h-3.5 text-zinc-400" />
                                 <span>{activeStep?.stage}</span>
                             </div>
-                            <p className="text-zinc-300 text-[11px] leading-relaxed font-mono pl-3.5">
+                            <p className="text-zinc-300 text-[11px] leading-relaxed font-mono pl-5">
                                 {activeStep?.label}
                             </p>
 
                             {activeStep?.details && (
-                                <div className="pl-3.5 pt-1">
+                                <div className="pl-5 pt-1">
                                     <pre className="p-2.5 rounded-lg bg-zinc-950/90 border border-white/5 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-44">
                                         {typeof activeStep.details === 'string' ? activeStep.details : JSON.stringify(activeStep.details, null, 2)}
                                     </pre>
@@ -83,16 +79,16 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                             {telemetry.map((step, idx) => (
                                 <div key={step.id || idx} className="space-y-1">
                                     <div className="flex items-center gap-2 text-zinc-300 font-medium text-[12px]">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80"></span>
+                                        <PiClockLight className="w-3.5 h-3.5 text-zinc-400" />
                                         <span>{step.stage}</span>
                                     </div>
                                     
-                                    <p className="text-zinc-400 text-[11px] leading-relaxed font-mono pl-3.5">
+                                    <p className="text-zinc-400 text-[11px] leading-relaxed font-mono pl-5">
                                         {step.label}
                                     </p>
 
                                     {step.details && (
-                                        <details className="pl-3.5 mt-1">
+                                        <details className="pl-5 mt-1">
                                             <summary className="text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300 transition-colors">
                                                 View step payload
                                             </summary>
