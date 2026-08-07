@@ -25,9 +25,14 @@ export class LLMService {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 60000);
 
+            const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+            if (config.llmApiKey) {
+                headers['Authorization'] = `Bearer ${config.llmApiKey}`;
+            }
+
             const res = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(body),
                 signal: controller.signal,
             });
