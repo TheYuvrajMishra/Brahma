@@ -222,25 +222,42 @@ ${renumberedTurns}`.trim();
         }
     }
 
-    static async appendZehnFact(fact: string): Promise<void> {
+    static async appendZehnFact(fact: string, specifiedSection?: string): Promise<void> {
         try {
             const current = await this.getZehn();
             const factLower = fact.toLowerCase();
 
-            // Determine target section based on fact content
-            let targetSection = '[SEC-01] User Identity & Core Profile';
-            if (factLower.includes('savaya') || factLower.includes('girlfriend') || factLower.includes('relationship') || factLower.includes('shikha') || factLower.includes('rani') || factLower.includes('love') || factLower.includes('soft')) {
-                targetSection = '[SEC-02] People & Relationships';
-            } else if (factLower.includes('persona') || factLower.includes('hinglish') || factLower.includes('tone') || factLower.includes('style') || factLower.includes('language')) {
-                targetSection = '[SEC-03] Persona & Communication Preferences';
-            } else if (factLower.includes('foontro') || factLower.includes('brahma') || factLower.includes('work') || factLower.includes('cto') || factLower.includes('project') || factLower.includes('job')) {
-                targetSection = '[SEC-04] Work, Career & Projects';
-            } else if (factLower.includes('email') || factLower.includes('mail') || factLower.includes('phone') || factLower.includes('contact') || factLower.includes('github') || factLower.includes('linkedin')) {
-                targetSection = '[SEC-05] Contact Information & Channels';
-            } else if (factLower.includes('routine') || factLower.includes('spreadsheet') || factLower.includes('health') || factLower.includes('sleep') || factLower.includes('habit')) {
-                targetSection = '[SEC-06] Health, Habits & Routines';
-            } else if (factLower.includes('ui') || factLower.includes('theme') || factLower.includes('dark')) {
-                targetSection = '[SEC-07] System & Technical Config';
+            // Determine target section based on explicit request or fact content
+            let targetSection = '[SEC-04] Work, Career & Projects'; // Default fallback for professional notes/facts
+
+            if (specifiedSection) {
+                const secClean = specifiedSection.trim().toUpperCase();
+                if (secClean.includes('SEC-01')) targetSection = '[SEC-01] User Identity & Core Profile';
+                else if (secClean.includes('SEC-02')) targetSection = '[SEC-02] People & Relationships';
+                else if (secClean.includes('SEC-03')) targetSection = '[SEC-03] Persona & Communication Preferences';
+                else if (secClean.includes('SEC-04')) targetSection = '[SEC-04] Work, Career & Projects';
+                else if (secClean.includes('SEC-05')) targetSection = '[SEC-05] Contact Information & Channels';
+                else if (secClean.includes('SEC-06')) targetSection = '[SEC-06] Health, Habits & Routines';
+                else if (secClean.includes('SEC-07')) targetSection = '[SEC-07] System & Technical Config';
+            } else {
+                if (factLower.includes('savaya') || factLower.includes('girlfriend') || factLower.includes('relationship') || factLower.includes('shikha') || factLower.includes('rani') || factLower.includes('love') || factLower.includes('soft') || factLower.includes('kanishk') || factLower.includes('employer') || factLower.includes('founder') || factLower.includes('friend') || factLower.includes('boss')) {
+                    // People & Relationships (or People related to work)
+                    if (factLower.includes('kanishk') || factLower.includes('employer') || factLower.includes('nxt') || factLower.includes('founder') || factLower.includes('work') || factLower.includes('cto') || factLower.includes('job')) {
+                        targetSection = '[SEC-04] Work, Career & Projects';
+                    } else {
+                        targetSection = '[SEC-02] People & Relationships';
+                    }
+                } else if (factLower.includes('persona') || factLower.includes('hinglish') || factLower.includes('tone') || factLower.includes('style') || factLower.includes('language')) {
+                    targetSection = '[SEC-03] Persona & Communication Preferences';
+                } else if (factLower.includes('foontro') || factLower.includes('brahma') || factLower.includes('work') || factLower.includes('cto') || factLower.includes('project') || factLower.includes('job') || factLower.includes('nxt') || factLower.includes('company') || factLower.includes('developer')) {
+                    targetSection = '[SEC-04] Work, Career & Projects';
+                } else if (factLower.includes('email') || factLower.includes('mail') || factLower.includes('phone') || factLower.includes('contact') || factLower.includes('github') || factLower.includes('linkedin')) {
+                    targetSection = '[SEC-05] Contact Information & Channels';
+                } else if (factLower.includes('routine') || factLower.includes('spreadsheet') || factLower.includes('health') || factLower.includes('sleep') || factLower.includes('habit')) {
+                    targetSection = '[SEC-06] Health, Habits & Routines';
+                } else if (factLower.includes('ui') || factLower.includes('theme') || factLower.includes('dark')) {
+                    targetSection = '[SEC-07] System & Technical Config';
+                }
             }
 
             const formattedFact = `- **Note**: ${fact}`;

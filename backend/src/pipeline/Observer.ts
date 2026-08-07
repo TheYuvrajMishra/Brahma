@@ -8,28 +8,34 @@ export class Observer {
         const startTime = Date.now();
         const currentMoment = await MemoryManager.getMoment(message.channel_id);
 
-        const systemPrompt = `
+const systemPrompt = `
 You are the Observer engine for an AI assistant.
 Your job is to read the current memory state and the new message, and analyze the user's latest input.
 Output exactly this JSON schema:
 
 {
-  "topic": "<brief topic of the conversation, e.g. Daily Routine, Email Setup>",
-  "tone": "<detected tone of the user's latest message, e.g. casual, stressed, formal>",
+  "topic": "<brief topic of the conversation, e.g. Employer Experience, People & Companies>",
+  "tone": "<detected tone of the user's latest message, e.g. angry, casual, informative, formal>",
   "new_long_term_facts": [
-    "Array of significant facts learned from this message about the user (e.g. their name, preferences, project details). Leave empty if nothing significant was said."
+    {
+      "fact": "<fact text learned about the user, their people, employers, or work, e.g. Shourya Goenka was co-founder of NXT>",
+      "target_section": "<MUST be one of: SEC-01 (User Identity), SEC-02 (People & Relationships), SEC-03 (Persona), SEC-04 (Work & Career), SEC-05 (Contact), SEC-06 (Routines), SEC-07 (System Config)>"
+    }
   ]
 }
 
+CRITICAL FACT EXTRACTION RULE:
+- Whenever the user states a fact about people, friends, partners, co-founders, employers, or companies (e.g. "X was co-founder of Y"), you MUST extract it into new_long_term_facts under SEC-02 or SEC-04. Do NOT omit it.
+
 Return ONLY the raw JSON, with no markdown ticks.
-        `.trim();
+`.trim();
 
         // We use the LLM to process tone and topic
         let llmResponse = await LLMService.chat(systemPrompt, `Current Moment state:\n${currentMoment}\nNew Message: ${message.content}`, true);
 
         let parsedTopic = 'Unknown';
         let parsedTone = 'Unknown';
-        let newFacts: string[] = [];
+        let newFacts: Array<{ fact: string; target_section?: string } | string> = [];
 
         try {
             if (llmResponse) {
@@ -71,8 +77,12 @@ Return ONLY the raw JSON, with no markdown ticks.
         const updatedMoment = MemoryManager.formatMoment(momentData);
         await MemoryManager.updateMoment(updatedMoment, message.channel_id);
         
-        for (const fact of newFacts) {
-            await MemoryManager.appendZehnFact(fact);
+        for (const item of newFacts) {
+            if (typeof item === 'string') {
+                await MemoryManager.appendZehnFact(item);
+            } else if (item && item.fact) {
+                await MemoryManager.appendZehnFact(item.fact, item.target_section);
+            }
         }
 
         Logger.info('Observer', message.message_id, Date.now() - startTime, 'SUCCESS');
