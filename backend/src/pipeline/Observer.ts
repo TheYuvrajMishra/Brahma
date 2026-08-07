@@ -63,8 +63,8 @@ Return ONLY the raw JSON, with no markdown ticks.
         momentData.tone = parsedTone;
         momentData.turns.push(`User: ${truncatedUserMsg}`);
 
-        // Keep at most 6 recent turns
-        while (momentData.turns.length > 6) {
+        // Keep at most 20 recent turns for rich short-term context
+        while (momentData.turns.length > 20) {
             momentData.turns.shift();
         }
 

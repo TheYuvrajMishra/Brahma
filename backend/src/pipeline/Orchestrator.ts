@@ -128,7 +128,7 @@ export class PipelineOrchestrator {
                 const truncatedReply = cleanReply.length > 2000 ? cleanReply.substring(0, 2000) + '...' : cleanReply;
                 momentData.turns.push(`Assistant: ${truncatedReply}`);
                 
-                while (momentData.turns.length > 6) {
+                while (momentData.turns.length > 20) {
                     momentData.turns.shift();
                 }
                 

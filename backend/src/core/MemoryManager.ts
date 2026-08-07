@@ -37,153 +37,80 @@ export class MemoryManager {
 
     static getFilteredZehn(rawZehn: string, intent: string, userMessage: string, recentTurns: string): string {
         const lines = rawZehn.split('\n');
-        const filteredLines: string[] = [];
-        
-        const searchText = (userMessage + ' ' + recentTurns).toLowerCase();
-        
-        interface FactFilterRule {
-            keywords: string[];
-            category: string;
+        if (lines.length === 0) return '';
+
+        // Extract Index Header lines if available
+        const indexHeaderLines: string[] = [];
+        let inIndexHeader = false;
+        for (const line of lines) {
+            if (line.trim().startsWith('## Index & Routing Table')) {
+                inIndexHeader = true;
+                indexHeaderLines.push(line);
+                continue;
+            }
+            if (inIndexHeader) {
+                if (line.trim().startsWith('## [')) {
+                    inIndexHeader = false;
+                } else {
+                    indexHeaderLines.push(line);
+                }
+            }
         }
 
-        const RULES: Record<string, FactFilterRule> = {
-            foontro: {
-                keywords: ['foontro', 'freelance', 'marketplace', 'startup', 'cto'],
-                category: 'project_foontro'
-            },
-            savaya: {
-                keywords: ['savaya', 'shikha', 'savayashikha', 'rani', 'love', 'romantic', 'conflict', 'relationship', 'gf', 'girlfriend', 'affection'],
-                category: 'relationship'
-            },
-            adhd: {
-                keywords: ['adhd', 'attention deficit', 'hyperactive', 'disorder'],
-                category: 'health_adhd'
-            },
-            stress: {
-                keywords: ['stress', 'pressure', 'relax', 'exhausted', 'burnout', 'abusive', 'frustrated', 'upset', 'wellness', 'health', 'motivate', 'motivation', 'sehat', 'araam', 'break', 'priority', 'prioritize', 'pomodoro'],
-                category: 'wellness'
-            },
-            ui: {
-                keywords: ['ui', 'theme', 'dark', 'light', 'sidebar', 'border', 'styling', 'frontend', 'page', 'component', 'color'],
-                category: 'user_interface'
-            },
-            email: {
-                keywords: ['email', 'mail', 'inbox', 'gmail', 'recipient', 'send'],
-                category: 'email'
-            },
-            discord: {
-                keywords: ['discord', 'guild', 'channel', 'text channel', 'voice channel'],
-                category: 'discord'
-            },
-            spreadsheet: {
-                keywords: ['spreadsheet', 'sheet', 'sheets', 'google sheet', 'excel', 'row', 'column', 'cell'],
-                category: 'spreadsheet'
-            }
+        const searchText = (userMessage + ' ' + recentTurns).toLowerCase();
+
+        // Categorized section mapping
+        const SECTION_KEYWORDS: Record<string, string[]> = {
+            'SEC-01': ['user', 'who am i', 'my name', 'yuvraj', 'bio', 'education', 'background', 'profile'],
+            'SEC-02': ['savaya', 'shikha', 'rani', 'love', 'romantic', 'conflict', 'relationship', 'gf', 'girlfriend', 'people', 'friend', 'family', 'partner', 'soft'],
+            'SEC-03': ['persona', 'style', 'tone', 'hinglish', 'hindi', 'english', 'bhaijaan', 'kamath', 'communication', 'mode'],
+            'SEC-04': ['work', 'job', 'foontro', 'brahma', 'cto', 'project', 'company', 'career', 'developer', 'github'],
+            'SEC-05': ['email', 'mail', 'phone', 'contact', 'linkedin', 'website', 'number', 'address', 'send', 'recipient'],
+            'SEC-06': ['routine', 'spreadsheet', 'health', 'sleep', 'habit', 'schedule', 'exercise', 'dinner'],
+            'SEC-07': ['ui', 'dark', 'theme', 'system', 'config', 'brahma']
         };
 
-        const activeCategories = new Set<string>();
-        if (intent === 'email_request') {
-            activeCategories.add('email');
-        } else if (intent === 'coding') {
-            activeCategories.add('ui');
-        } else if (intent === 'emotional_support') {
-            activeCategories.add('stress');
-        } else if (intent === 'spreadsheet_request') {
-            activeCategories.add('spreadsheet');
-        }
-        
-        for (const [key, rule] of Object.entries(RULES)) {
-            if (rule.keywords.some(keyword => this.matchKeyword(searchText, keyword))) {
-                activeCategories.add(key);
+        const activeSections = new Set<string>();
+
+        // Always include User Identity [SEC-01] and Persona [SEC-03] for foundational grounding
+        activeSections.add('SEC-01');
+        activeSections.add('SEC-03');
+
+        // Match user message & recent context against section keywords
+        for (const [secId, keywords] of Object.entries(SECTION_KEYWORDS)) {
+            if (keywords.some(kw => this.matchKeyword(searchText, kw))) {
+                activeSections.add(secId);
             }
         }
-        
+
+        // Match based on intent routing
+        if (intent === 'email_request') activeSections.add('SEC-05');
+        if (intent === 'emotional_support') activeSections.add('SEC-02');
+        if (intent === 'spreadsheet_request') activeSections.add('SEC-06');
+        if (intent === 'coding') activeSections.add('SEC-04');
+
+        // Parse markdown sections
+        const extractedSections: string[] = [];
+        let currentSecId = '';
+        let currentLines: string[] = [];
+
         for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed) {
-                filteredLines.push(line);
-                continue;
-            }
-            
-            if (trimmed.startsWith('#')) {
-                filteredLines.push(line);
-                continue;
-            }
-            
-            if (trimmed.startsWith('-')) {
-                const content = trimmed.substring(1).trim().toLowerCase();
-                
-                // Keep name and general language/persona preferences
-                const isAlwaysAllowed = 
-                    content.startsWith('name:') ||
-                    content.includes('language') ||
-                    content.includes('hinglish') ||
-                    content.includes('hindi') ||
-                    content.includes('english') ||
-                    content.includes('persona') ||
-                    content.includes('style') ||
-                    content.includes('tone') ||
-                    content.includes('communication') ||
-                    content.includes('bhaijaan') ||
-                    content.includes('salman');
-                    
-                if (isAlwaysAllowed) {
-                    filteredLines.push(line);
-                    continue;
+            const match = line.trim().match(/^##\s+\[(SEC-\d+)\]/i);
+            if (match) {
+                if (currentSecId && activeSections.has(currentSecId)) {
+                    extractedSections.push(currentLines.join('\n'));
                 }
-                
-                let belongsToGated = false;
-                let matchesActive = false;
-                
-                for (const [key, rule] of Object.entries(RULES)) {
-                    if (rule.keywords.some(keyword => this.matchKeyword(content, keyword))) {
-                        belongsToGated = true;
-                        if (activeCategories.has(key)) {
-                            matchesActive = true;
-                        }
-                    }
-                }
-                
-                if (!belongsToGated) {
-                    filteredLines.push(line);
-                } else if (matchesActive) {
-                    filteredLines.push(line);
-                }
-            } else {
-                filteredLines.push(line);
+                currentSecId = match[1].toUpperCase();
+                currentLines = [line];
+            } else if (currentSecId) {
+                currentLines.push(line);
             }
         }
-        
-        // Clean up empty sections
-        const resultLines: string[] = [];
-        let lastHeaderIdx = -1;
-        
-        for (let i = 0; i < filteredLines.length; i++) {
-            const line = filteredLines[i];
-            if (line.trim().startsWith('#') || line.trim().startsWith('##')) {
-                if (lastHeaderIdx !== -1) {
-                    const prevSectionLines = resultLines.slice(lastHeaderIdx + 1);
-                    const hasContent = prevSectionLines.some(l => l.trim().startsWith('-'));
-                    if (!hasContent) {
-                        resultLines.splice(lastHeaderIdx, resultLines.length - lastHeaderIdx);
-                    }
-                }
-                lastHeaderIdx = resultLines.length;
-                resultLines.push(line);
-            } else {
-                resultLines.push(line);
-            }
+        if (currentSecId && activeSections.has(currentSecId)) {
+            extractedSections.push(currentLines.join('\n'));
         }
-        
-        if (lastHeaderIdx !== -1) {
-            const lastSectionLines = resultLines.slice(lastHeaderIdx + 1);
-            const hasContent = lastSectionLines.some(l => l.trim().startsWith('-'));
-            if (!hasContent) {
-                resultLines.splice(lastHeaderIdx, resultLines.length - lastHeaderIdx);
-            }
-        }
-        
-        return resultLines.join('\n');
+
+        return indexHeaderLines.join('\n') + '\n\n' + extractedSections.join('\n\n');
     }
 
     static async getMoment(channelId?: string): Promise<string> {
@@ -194,7 +121,6 @@ export class MemoryManager {
                     return doc.momentMarkdown;
                 }
             }
-            // Fallback default moment structure
             return `# Moment: Session Memory\n## Current Context\n- **Current Topic**: Unknown\n- **Detected Tone**: Unknown\n- **Active Task**: None\n\n## Recent Turns`;
         } catch {
             return '';
@@ -209,33 +135,21 @@ export class MemoryManager {
             turns: [] as string[]
         };
 
-        // Extract Topic
         const topicMatch = markdown.match(/-\s+\*\*Current Topic\*\*:\s*([^\n]+)/i);
-        if (topicMatch) {
-            data.topic = topicMatch[1].trim();
-        }
+        if (topicMatch) data.topic = topicMatch[1].trim();
 
-        // Extract Tone
         const toneMatch = markdown.match(/-\s+\*\*Detected Tone\*\*:\s*([^\n]+)/i);
-        if (toneMatch) {
-            data.tone = toneMatch[1].trim();
-        }
+        if (toneMatch) data.tone = toneMatch[1].trim();
 
-        // Extract Active Task
         const taskMatch = markdown.match(/-\s+\*\*Active Task\*\*:\s*([^\n]+)/i);
-        if (taskMatch) {
-            data.activeTask = taskMatch[1].trim();
-        }
+        if (taskMatch) data.activeTask = taskMatch[1].trim();
 
-        // Extract Turns
         if (markdown.includes('## Recent Turns')) {
             const parts = markdown.split('## Recent Turns');
             const turnsText = parts[1].trim();
             if (turnsText) {
                 const lines = turnsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-                data.turns = lines.map(line => {
-                    return line.replace(/^\d+\.\s*/, '').trim();
-                });
+                data.turns = lines.map(line => line.replace(/^\d+\.\s*/, '').trim());
             }
         }
 
@@ -311,9 +225,50 @@ ${renumberedTurns}`.trim();
     static async appendZehnFact(fact: string): Promise<void> {
         try {
             const current = await this.getZehn();
-            const appendText = `\n- [${new Date().toISOString()}] ${fact}`;
-            await fs.promises.writeFile(path.join(config.brainPath, 'zehn.md'), current + appendText, 'utf-8');
-            Logger.audit('MEMORY_WRITE', { file: 'zehn.md', type: 'append', fact });
+            const factLower = fact.toLowerCase();
+
+            // Determine target section based on fact content
+            let targetSection = '[SEC-01] User Identity & Core Profile';
+            if (factLower.includes('savaya') || factLower.includes('girlfriend') || factLower.includes('relationship') || factLower.includes('shikha') || factLower.includes('rani') || factLower.includes('love') || factLower.includes('soft')) {
+                targetSection = '[SEC-02] People & Relationships';
+            } else if (factLower.includes('persona') || factLower.includes('hinglish') || factLower.includes('tone') || factLower.includes('style') || factLower.includes('language')) {
+                targetSection = '[SEC-03] Persona & Communication Preferences';
+            } else if (factLower.includes('foontro') || factLower.includes('brahma') || factLower.includes('work') || factLower.includes('cto') || factLower.includes('project') || factLower.includes('job')) {
+                targetSection = '[SEC-04] Work, Career & Projects';
+            } else if (factLower.includes('email') || factLower.includes('mail') || factLower.includes('phone') || factLower.includes('contact') || factLower.includes('github') || factLower.includes('linkedin')) {
+                targetSection = '[SEC-05] Contact Information & Channels';
+            } else if (factLower.includes('routine') || factLower.includes('spreadsheet') || factLower.includes('health') || factLower.includes('sleep') || factLower.includes('habit')) {
+                targetSection = '[SEC-06] Health, Habits & Routines';
+            } else if (factLower.includes('ui') || factLower.includes('theme') || factLower.includes('dark')) {
+                targetSection = '[SEC-07] System & Technical Config';
+            }
+
+            const formattedFact = `- **Note**: ${fact}`;
+
+            if (current.includes(`## ${targetSection}`)) {
+                // Insert under existing section
+                const parts = current.split(`## ${targetSection}`);
+                const header = parts[0] + `## ${targetSection}`;
+                const rest = parts[1];
+                
+                // Find next header or end of string
+                const nextHeaderIdx = rest.indexOf('\n## ');
+                let updatedZehn = '';
+                if (nextHeaderIdx !== -1) {
+                    const secContent = rest.substring(0, nextHeaderIdx);
+                    const remaining = rest.substring(nextHeaderIdx);
+                    updatedZehn = header + secContent + `\n${formattedFact}` + remaining;
+                } else {
+                    updatedZehn = header + rest + `\n${formattedFact}`;
+                }
+                await fs.promises.writeFile(path.join(config.brainPath, 'zehn.md'), updatedZehn, 'utf-8');
+            } else {
+                // Fallback append
+                const appendText = `\n\n## ${targetSection}\n${formattedFact}`;
+                await fs.promises.writeFile(path.join(config.brainPath, 'zehn.md'), current + appendText, 'utf-8');
+            }
+
+            Logger.audit('MEMORY_WRITE', { file: 'zehn.md', type: 'append', fact, section: targetSection });
         } catch (err) {
             console.error('Failed to append to zehn.md:', err);
         }

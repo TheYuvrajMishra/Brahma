@@ -22,19 +22,26 @@ export class ReflectionEngine {
 
             const prompt = `
 You are the Memory Compression Engine for Brahma.
-Your task is to review and compress the long-term memory file (zehn.md) to keep it clean, concise, and structured.
+Your task is to review and compress the long-term memory file (zehn.md) to keep it clean, concise, structured, and indexed.
 
-The memory file contains two sections:
-1. "## Core Facts (Importance > 0.8)" - These are fundamental user details (e.g. name, email, preferred UI mode, active projects, and core Brahma definition). You MUST preserve these core facts exactly as they are without deleting or changing them.
-2. "## Contextual Notes (Importance < 0.8)" - These are temporary or contextual notes, preferences, and observations. Over time, these can become duplicate, verbose, or contradictory.
+The memory file follows a strict indexed section structure:
+1. Index & Routing Table at the top listing sections [SEC-01] to [SEC-07].
+2. Section headers:
+   - ## [SEC-01] User Identity & Core Profile
+   - ## [SEC-02] People & Relationships
+   - ## [SEC-03] Persona & Communication Preferences
+   - ## [SEC-04] Work, Career & Projects
+   - ## [SEC-05] Contact Information & Channels
+   - ## [SEC-06] Health, Habits & Routines
+   - ## [SEC-07] System & Technical Config
 
-Analyze the "## Contextual Notes" section:
-- Combine similar observations and facts into clean, single-sentence points (e.g. consolidate multiple entries about preferred tone, persona styles, or stress levels).
-- Resolve any conflicting statements, prioritizing more recent timestamps.
-- Prune minor, transient, or low-value observations (like temporary tool execution details or transient failures).
-- Maintain timestamp references only when they are highly relevant to tracking changes in preferences over time.
+Review and optimize each section:
+- Combine duplicate observations and facts within their respective sections.
+- Resolve any conflicting statements, prioritizing more recent information.
+- Maintain the section headers exactly as formatted above.
+- Ensure girlfriend/partner info (e.g., Savaya), personal identity, contacts, projects, and routines are neatly categorized in their corresponding sections.
 
-Output the entire updated markdown file containing BOTH the "## Core Facts" (untouched) and the new, consolidated "## Contextual Notes".
+Output the ENTIRE updated markdown file.
 Output ONLY the markdown content. Do NOT include markdown code fence ticks (\`\`\`) or any introductory/explanatory text.
             `.trim();
 
