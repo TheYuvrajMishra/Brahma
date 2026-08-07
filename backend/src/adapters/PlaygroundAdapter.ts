@@ -21,8 +21,121 @@ export class PlaygroundAdapter implements Adapter {
             cors: { origin: '*' }
         });
 
-        // Serve static files from the public folder
+        // CORS and Json Middleware
+        app.use((req, res, next) => {
+            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+            res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+            if (req.method === 'OPTIONS') {
+                return res.sendStatus(200);
+            }
+            next();
+        });
+        app.use(express.json());
         app.use(express.static(path.join(__dirname, '../../public')));
+
+        // Google OAuth 2.0 Auth URL generator
+        app.get('/api/auth/google/url', (req, res) => {
+            const clientId = process.env.GMAIL_CLIENT_ID || '';
+            const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:3005/api/auth/google/callback';
+            const scopeList = [
+                'https://mail.google.com/',
+                'https://www.googleapis.com/auth/spreadsheets',
+                'https://www.googleapis.com/auth/calendar',
+                'https://www.googleapis.com/auth/calendar.events',
+                'https://www.googleapis.com/auth/drive',
+                'https://www.googleapis.com/auth/userinfo.email',
+                'https://www.googleapis.com/auth/userinfo.profile'
+            ];
+            const scope = encodeURIComponent(scopeList.join(' '));
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&access_type=offline&prompt=consent`;
+            res.json({ url: authUrl, configured: !!clientId });
+        });
+
+        // Google OAuth 2.0 Callback handler
+        app.get('/api/auth/google/callback', async (req, res) => {
+            const code = req.query.code as string;
+            if (!code) {
+                return res.send('<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"No code provided"}, "*"); window.close();</script>');
+            }
+
+            try {
+                const clientId = process.env.GMAIL_CLIENT_ID || '';
+                const clientSecret = process.env.GMAIL_CLIENT_SECRET || '';
+                const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:3005/api/auth/google/callback';
+
+                const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        code,
+                        client_id: clientId,
+                        client_secret: clientSecret,
+                        redirect_uri: redirectUri,
+                        grant_type: 'authorization_code'
+                    })
+                });
+
+                const tokens: any = await tokenRes.json();
+
+                if (!tokenRes.ok || !tokens.refresh_token) {
+                    const errDetail = tokens.error_description || tokens.error || 'Failed to obtain refresh token';
+                    return res.send(`<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"${errDetail}"}, "*"); window.close();</script>`);
+                }
+
+                // Update process.env and rewrite .env file
+                process.env.GMAIL_REFRESH_TOKEN = tokens.refresh_token;
+                const envPath = path.join(__dirname, '../../.env');
+                if (fs.existsSync(envPath)) {
+                    let envContent = fs.readFileSync(envPath, 'utf-8');
+                    if (envContent.includes('GMAIL_REFRESH_TOKEN=')) {
+                        envContent = envContent.replace(/GMAIL_REFRESH_TOKEN=.*/g, `GMAIL_REFRESH_TOKEN=${tokens.refresh_token}`);
+                    } else {
+                        envContent += `\nGMAIL_REFRESH_TOKEN=${tokens.refresh_token}`;
+                    }
+                    fs.writeFileSync(envPath, envContent, 'utf-8');
+                }
+
+                // Fetch user info for UI confirmation
+                let email = '';
+                if (tokens.access_token) {
+                    try {
+                        const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+                            headers: { Authorization: `Bearer ${tokens.access_token}` }
+                        });
+                        const userData: any = await userRes.json();
+                        email = userData.email || '';
+                        if (email) {
+                            process.env.GMAIL_WATCH_ADDRESS = email;
+                        }
+                    } catch (e) {
+                        console.warn('[Playground] Could not fetch user profile:', e);
+                    }
+                }
+
+                this.io.emit('google:connected', { connected: true, email: email || process.env.GMAIL_WATCH_ADDRESS });
+
+                res.send(`
+                    <html>
+                        <body style="background:#09090b;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
+                            <div style="text-align:center;background:#18181b;padding:30px;border-radius:16px;border:1px solid #27272a;">
+                                <h2 style="color:#34d399;margin-top:0;">Google Account Connected!</h2>
+                                <p style="color:#a1a1aa;">Closing window and returning to Brahma...</p>
+                            </div>
+                            <script>
+                                if (window.opener) {
+                                    window.opener.postMessage({ type: "GOOGLE_AUTH_SUCCESS", success: true, email: "${email}" }, "*");
+                                }
+                                setTimeout(() => window.close(), 1200);
+                            </script>
+                        </body>
+                    </html>
+                `);
+            } catch (err: any) {
+                console.error('[Playground] OAuth Callback error:', err);
+                res.send(`<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"${err.message || String(err)}"}, "*"); window.close();</script>`);
+            }
+        });
 
         this.io.on('connection', (socket) => {
             console.log(`[Playground] User connected: ${socket.id}`);
@@ -107,7 +220,17 @@ export class PlaygroundAdapter implements Adapter {
                 }
             });
 
-            // ── Session CRUD Events ─────────────────────────────────────
+            // ── Google Account Status Event ──────────────────────────────
+            socket.on('google:status', (callback?: (data: any) => void) => {
+                const hasRefreshToken = !!process.env.GMAIL_REFRESH_TOKEN && process.env.GMAIL_REFRESH_TOKEN.length > 5;
+                const email = process.env.GMAIL_WATCH_ADDRESS || '';
+                if (callback) {
+                    callback({
+                        connected: hasRefreshToken,
+                        email: hasRefreshToken ? email : ''
+                    });
+                }
+            });
 
             socket.on('session:create', async (callback?: (data: any) => void) => {
                 try {
