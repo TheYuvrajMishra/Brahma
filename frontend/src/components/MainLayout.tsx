@@ -39,7 +39,10 @@ export const MainLayout: React.FC = () => {
 
     // ── Socket Setup ──────────────────────────────────────────────────
     useEffect(() => {
-        const newSocket = io('http://127.0.0.1:3005');
+        const socketUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3005'
+            : window.location.origin;
+        const newSocket = io(socketUrl);
         setSocket(newSocket);
 
         newSocket.on('connect', () => { 
