@@ -1,0 +1,38 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          passphrase: ${{ secrets.VPS_PASSPHRASE }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            # Navigate to project directory (adjust if your project path is different)
+            cd ~/Brahma || cd /var/www/Brahma || cd /app/Brahma
+
+            # Fetch and pull latest changes from main branch
+            git fetch --all
+            git reset --hard origin/main || git reset --hard origin/master
+
+            # Rebuild and restart Docker containers in detached mode
+            docker-compose down
+            docker-compose up --build -d
+
+            # Prune unused docker images to save VPS disk space
+            docker image prune -f

@@ -234,7 +234,7 @@ export class PlaygroundAdapter implements Adapter {
 
             socket.on('logs:read', async (callback?: (data: any) => void) => {
                 try {
-                    const logPath = path.join(__dirname, '../../audit.log');
+                    const logPath = path.resolve(process.cwd(), 'audit.log');
                     if (!fs.existsSync(logPath)) {
                         if (callback) callback({ success: true, logs: [] });
                         return;
