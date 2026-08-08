@@ -8,11 +8,10 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci
 
-# Copy source code, brain context files, and TypeScript config
+# Copy source code and TypeScript config
 COPY tsconfig.json ./
 COPY index.ts ./
 COPY src ./src
-COPY brahma\ \[brain\] ./brahma\ \[brain\]
 
 # Build TypeScript code
 RUN npm run build
