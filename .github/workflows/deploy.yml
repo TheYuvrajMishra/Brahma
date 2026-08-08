@@ -14,18 +14,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate deployment secrets
-        id: validate_secrets
-        run: |
-          if [ -n "${{ secrets.VPS_HOST }}" ] && [ -n "${{ secrets.VPS_USERNAME }}" ] && [ -n "${{ secrets.VPS_SSH_KEY }}" ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Skipping deployment because VPS secrets are not fully configured (VPS_HOST, VPS_USERNAME, VPS_SSH_KEY)."
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Deploy to VPS via SSH
-        if: steps.validate_secrets.outputs.ready == 'true'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
