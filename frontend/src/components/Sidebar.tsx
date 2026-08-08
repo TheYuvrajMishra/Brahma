@@ -23,6 +23,9 @@ interface SidebarProps {
     switchSession: (id: string) => void;
     deleteSession: (id: string) => void;
     activePage?: 'playground' | 'context' | 'logs';
+    googleConnected?: boolean;
+    googleEmail?: string;
+    onConnectGoogle?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,6 +39,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     switchSession,
     deleteSession,
     activePage = 'playground',
+    googleConnected = false,
+    googleEmail = '',
+    onConnectGoogle,
 }) => {
     // ── Time formatter ────────────────────────────────────────────────
     const formatTime = (dateStr: string) => {
@@ -93,6 +99,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <PiListLight className="w-4 h-4" />
                         <span>Audit Telemetry</span>
                     </Link>
+                </div>
+
+                {/* Google Workspace Connection Pill */}
+                <div className="mx-1 p-3 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <svg className="w-4 h-4" viewBox="0 0 24 24">
+                                <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.3 8.9 5 12 5z" />
+                                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z" />
+                                <path fill="#FBBC05" d="M5.3 14.7c-.2-.7-.4-1.7-.4-2.7s.2-2 .4-2.7L1.6 6.4C.6 8.4 0 10.1 0 12s.6 3.6 1.6 5.6l3.7-2.9z" />
+                                <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.3-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z" />
+                            </svg>
+                            <span className="text-xs font-medium text-white/90">Google Account</span>
+                        </div>
+                        <span className={`w-2 h-2 rounded-full ${googleConnected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-amber-500/60'}`} />
+                    </div>
+                    {googleConnected ? (
+                        <div className="flex items-center justify-between pt-1">
+                            <span className="text-[10px] font-mono text-emerald-400 truncate max-w-[130px]">
+                                {googleEmail || 'Connected'}
+                            </span>
+                            <button
+                                onClick={onConnectGoogle}
+                                className="text-[10px] text-zinc-400 hover:text-white underline transition-colors"
+                            >
+                                Reconnect
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={onConnectGoogle}
+                            className="w-full py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-medium text-white/90 flex items-center justify-center gap-2 transition-all"
+                        >
+                            <span>Connect Google</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Separator line */}
