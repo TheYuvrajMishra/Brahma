@@ -146,20 +146,6 @@ npm install
 npm run dev
 ```
 
-### 🐳 Run with Docker (Recommended for VPS Deployment)
-
-To deploy the entire stack (Frontend, Backend, and MongoDB) using Docker Compose:
-
-```bash
-docker-compose up --build -d
-```
-
-* **Frontend App**: Accessible on `http://<your-vps-ip>:80`
-* **Backend API**: Accessible on `http://<your-vps-ip>:3005`
-* **Health & Metrics Endpoint**: Accessible on `http://<your-vps-ip>:3006/health`
-
----
-
 Once running:
 *   Open the Web Dashboard on [http://localhost:5173](http://localhost:5173).
 *   The Playground communicates with backend sockets running on port `3005`.

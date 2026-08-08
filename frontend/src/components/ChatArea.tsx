@@ -51,10 +51,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
         setUploadingFile(true);
         try {
-            const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                ? 'http://localhost:3005' 
-                : '';
-            const res = await fetch(`${baseUrl}/api/upload`, {
+            const host = window.location.hostname || 'localhost';
+            const res = await fetch(`http://${host}:3005/api/upload`, {
                 method: 'POST',
                 headers: {
                     'x-file-name': file.name
