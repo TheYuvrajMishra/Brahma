@@ -34,16 +34,23 @@ jobs:
           passphrase: ${{ secrets.VPS_PASSPHRASE }}
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
-            # Navigate to project directory (adjust if your project path is different)
+            # Navigate to project directory
             cd ~/Brahma || cd /var/www/Brahma || cd /app/Brahma
 
-            # Fetch and pull latest changes from main branch
+            # Fetch and pull latest changes from main/master branch
             git fetch --all
             git reset --hard origin/main || git reset --hard origin/master
 
-            # Rebuild and restart Docker containers in detached mode
-            docker-compose down
-            docker-compose up --build -d
+            # Detect docker compose CLI command
+            if command -v docker &> /dev/null && docker compose version &> /dev/null; then
+              DOCKER_COMPOSE="docker compose"
+            else
+              DOCKER_COMPOSE="docker-compose"
+            fi
+
+            # Rebuild without cache to ensure fresh frontend/backend builds
+            $DOCKER_COMPOSE build --no-cache
+            $DOCKER_COMPOSE up -d --force-recreate
 
             # Prune unused docker images to save VPS disk space
             docker image prune -f
