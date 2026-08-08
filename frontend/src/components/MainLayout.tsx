@@ -24,9 +24,6 @@ export const MainLayout: React.FC = () => {
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-    const [googleConnected, setGoogleConnected] = useState(false);
-    const [googleEmail, setGoogleEmail] = useState('');
-
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -47,65 +44,17 @@ export const MainLayout: React.FC = () => {
 
         newSocket.on('connect', () => { 
             setConnected(true); 
-            // Query google status
-            newSocket.emit('google:status', (res: any) => {
-                if (res) {
-                    setGoogleConnected(!!res.connected);
-                    setGoogleEmail(res.email || '');
-                }
-            });
         });
         newSocket.on('disconnect', () => { setConnected(false); });
         newSocket.on('connect_error', (err: any) => { console.error('Socket error:', err); });
-
-        newSocket.on('google:connected', (data: { connected: boolean; email?: string }) => {
-            setGoogleConnected(data.connected);
-            if (data.email) setGoogleEmail(data.email);
-        });
 
         newSocket.on('session:updated', (data: { sessionId: string; title: string }) => {
             setSessions(prev => prev.map(s => s.sessionId === data.sessionId ? { ...s, title: data.title } : s));
         });
 
-        // Listen for postMessage from OAuth popup window
-        const handlePostMessage = (event: MessageEvent) => {
-            if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-                if (event.data.success) {
-                    setGoogleConnected(true);
-                    if (event.data.email) setGoogleEmail(event.data.email);
-                } else {
-                    alert(`Google Connection Failed: ${event.data.error || 'Unknown error'}`);
-                }
-            }
-        };
-        window.addEventListener('message', handlePostMessage);
-
         return () => { 
             newSocket.disconnect(); 
-            window.removeEventListener('message', handlePostMessage);
         };
-    }, []);
-
-    const connectGoogle = useCallback(async () => {
-        try {
-            const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                ? 'http://localhost:3005' 
-                : '';
-            const res = await fetch(`${baseUrl}/api/auth/google/url`);
-            const data = await res.json();
-            if (data.url) {
-                const width = 600;
-                const height = 700;
-                const left = window.screen.width / 2 - width / 2;
-                const top = window.screen.height / 2 - height / 2;
-                window.open(data.url, 'Google OAuth', `width=${width},height=${height},top=${top},left=${left}`);
-            } else {
-                alert('Google OAuth client ID is not configured on backend.');
-            }
-        } catch (err) {
-            console.error('Failed to get Google Auth URL:', err);
-            alert('Could not initialize Google Connection. Ensure backend is running.');
-        }
     }, []);
 
     // ── Load sessions on connect ──────────────────────────────────────
@@ -192,9 +141,6 @@ export const MainLayout: React.FC = () => {
                 switchSession={switchSession}
                 deleteSession={deleteSession}
                 activePage={activePage}
-                googleConnected={googleConnected}
-                googleEmail={googleEmail}
-                onConnectGoogle={connectGoogle}
             />
 
             <div className="main-island">
