@@ -39,7 +39,7 @@ export const MainLayout: React.FC = () => {
 
     // ── Socket Setup ──────────────────────────────────────────────────
     useEffect(() => {
-        const newSocket = io('http://127.0.0.1:3005');
+        const newSocket = io();
         setSocket(newSocket);
 
         newSocket.on('connect', () => { 
@@ -85,10 +85,7 @@ export const MainLayout: React.FC = () => {
 
     const connectGoogle = useCallback(async () => {
         try {
-            const baseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                ? 'http://localhost:3005' 
-                : '';
-            const res = await fetch(`${baseUrl}/api/auth/google/url`);
+            const res = await fetch('/api/auth/google/url');
             const data = await res.json();
             if (data.url) {
                 const width = 600;

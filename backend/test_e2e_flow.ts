@@ -3,7 +3,8 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const socket = io('http://localhost:3005');
+const port = process.env.PORT || '5000';
+const socket = io(`http://localhost:${port}`);
 const sessionId = 'session_1780822545524_8075';
 
 socket.on('connect', () => {

@@ -31,7 +31,8 @@ async function bootstrap() {
     orchestrator.registerAdapter(discordAdapter);
 
     // Register Playground Adapter
-    const playgroundAdapter = new PlaygroundAdapter(3005);
+    const port = parseInt(process.env.PORT || '5000', 10);
+    const playgroundAdapter = new PlaygroundAdapter(port);
     orchestrator.registerAdapter(playgroundAdapter);
 
     // Register Email Adapter

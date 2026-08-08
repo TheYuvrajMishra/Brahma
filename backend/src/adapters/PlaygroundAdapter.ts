@@ -16,7 +16,7 @@ export class PlaygroundAdapter implements Adapter {
     private sessionMap: Map<string, string> = new Map(); // message_id -> sessionId
     private telemetryMap: Map<string, any[]> = new Map(); // message_id -> TelemetryStep[]
 
-    constructor(private port: number = 3005) {
+    constructor(private port: number = 5000) {
         const app = express();
         const httpServer = createServer(app);
         this.io = new Server(httpServer, {
@@ -70,7 +70,7 @@ export class PlaygroundAdapter implements Adapter {
         // Google OAuth 2.0 Auth URL generator
         app.get('/api/auth/google/url', (req, res) => {
             const clientId = process.env.GMAIL_CLIENT_ID || '';
-            const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:3005/api/auth/google/callback';
+            const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
             const scopeList = [
                 'https://mail.google.com/',
                 'https://www.googleapis.com/auth/spreadsheets',
@@ -95,7 +95,7 @@ export class PlaygroundAdapter implements Adapter {
             try {
                 const clientId = process.env.GMAIL_CLIENT_ID || '';
                 const clientSecret = process.env.GMAIL_CLIENT_SECRET || '';
-                const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:3005/api/auth/google/callback';
+                const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
 
                 const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
                     method: 'POST',

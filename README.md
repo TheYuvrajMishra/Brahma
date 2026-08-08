@@ -148,7 +148,7 @@ npm run dev
 
 Once running:
 *   Open the Web Dashboard on [http://localhost:5173](http://localhost:5173).
-*   The Playground communicates with backend sockets running on port `3005`.
+*   The Playground communicates with backend sockets running on port `5000`.
 
 ---
 
