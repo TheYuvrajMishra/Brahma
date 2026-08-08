@@ -35,7 +35,7 @@ jobs:
           port: ${{ secrets.VPS_PORT || 22 }}
           script: |
             # Navigate to project directory
-            cd ~/Brahma || cd /var/www/Brahma || cd /app/Brahma
+            cd Brahma || cd ~/Brahma || cd /var/www/Brahma
 
             # Fetch and pull latest changes from main/master branch
             git fetch --all
