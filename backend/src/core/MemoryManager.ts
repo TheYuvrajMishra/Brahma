@@ -3,6 +3,7 @@ import path from 'path';
 import { config } from '../config';
 import { Logger } from './Logger';
 import { SessionContext } from '../models/SessionContext';
+import { LLMService } from '../services/LLMService';
 
 export interface OnboardingData {
     displayName?: string;
@@ -350,6 +351,81 @@ ${renumberedTurns}`.trim();
     }
 
     /**
+     * Dynamically parses onboarding bio/preferences text into section-specific facts.
+     */
+    private static async categorizeOnboardingText(rawText: string): Promise<{
+        identity: string[];
+        persona: string[];
+        work: string[];
+        routines: string[];
+        dislikes: string[];
+    }> {
+        if (!rawText || rawText.trim().length === 0) {
+            return { identity: [], persona: [], work: [], routines: [], dislikes: [] };
+        }
+
+        const systemPrompt = `
+You are Brahma's Brain Memory Structurer.
+Read the user's bio/preferences text and extract concise, factual bullet points into the correct memory categories.
+
+DO NOT hallucinate or invent facts. Only extract facts explicitly stated in the text.
+
+Respond ONLY with a valid JSON object matching this schema:
+{
+  "identity": ["Age 19", "IGNOU BCA degree", "Self-taught developer"],
+  "persona": ["Stack: Next.js, Node.js, Express, MongoDB, Tailwind CSS", "Favors editorial, animation-first, dark UI systems", "Workflow: Command-driven (/start-coding, /explain)"],
+  "work": ["Co-founder & CTO at Foontro (live multi-tenant freelance marketplace)", "Hardware: AMD Ryzen 2200G rig (no dedicated GPU)", "Goals: Returning to hands-on traditional coding, system design & AWS"],
+  "routines": ["Learns best through checklists & structured daily plans (inspired by theboringfounder)"],
+  "dislikes": ["Verbose explanations, unnecessary hedging, unrequested elaboration, long-form prose filler"]
+}
+`.trim();
+
+        try {
+            const response = await LLMService.chat(systemPrompt, rawText, true);
+            if (response) {
+                const clean = response.replace(/```(?:json)?/gi, '').trim();
+                const parsed = JSON.parse(clean);
+                return {
+                    identity: Array.isArray(parsed.identity) ? parsed.identity : [],
+                    persona: Array.isArray(parsed.persona) ? parsed.persona : [],
+                    work: Array.isArray(parsed.work) ? parsed.work : [],
+                    routines: Array.isArray(parsed.routines) ? parsed.routines : [],
+                    dislikes: Array.isArray(parsed.dislikes) ? parsed.dislikes : [],
+                };
+            }
+        } catch (err) {
+            console.warn('[MemoryManager] LLM categorization failed, using fallback mapper:', err);
+        }
+
+        // Fallback heuristic parser if LLM is offline
+        const identity: string[] = [];
+        const persona: string[] = [];
+        const work: string[] = [];
+        const routines: string[] = [];
+        const dislikes: string[] = [];
+
+        const sentences = rawText.split(/(?<=[.!?])\s+/);
+        for (const sentence of sentences) {
+            const s = sentence.trim();
+            if (!s) continue;
+            const lower = s.toLowerCase();
+            if (lower.includes('dislike') || lower.includes('avoid') || lower.includes('no fluff') || lower.includes('verbose') || lower.includes('hedging')) {
+                dislikes.push(s);
+            } else if (lower.includes('cto') || lower.includes('founder') || lower.includes('company') || lower.includes('project') || lower.includes('work') || lower.includes('foontro') || lower.includes('ryzen') || lower.includes('aws') || lower.includes('system design')) {
+                work.push(s);
+            } else if (lower.includes('checklist') || lower.includes('routine') || lower.includes('habit') || lower.includes('plan')) {
+                routines.push(s);
+            } else if (lower.includes('age') || lower.includes('degree') || lower.includes('bca') || lower.includes('kolkata') || lower.includes('student') || lower.includes('ignou')) {
+                identity.push(s);
+            } else {
+                persona.push(s);
+            }
+        }
+
+        return { identity, persona, work, routines, dislikes };
+    }
+
+    /**
      * Seeds the user's dedicated brain in core/* with onboarding profile data.
      */
     static async seedUserBrain(userId: string, data: OnboardingData): Promise<void> {
@@ -362,8 +438,31 @@ ${renumberedTurns}`.trim();
                 ? 'Executive Summarizer (high-level bullet points, action items)'
                 : 'Conversational & Adaptive (collaborative, detailed explanations with Hinglish/tone warmth)';
 
-        const prefText = data.preferences ? data.preferences.trim() : 'None specified';
-        const dislikeText = data.dislikes ? data.dislikes.trim() : '';
+        const prefText = (data.preferences || '') + (data.dislikes ? `\nDislikes: ${data.dislikes}` : '');
+        const categorized = await this.categorizeOnboardingText(prefText);
+
+        const identityLines = [
+            `- **Full / Display Name**: ${data.displayName || 'User'}`,
+            `- **Role / Occupation**: ${data.role || 'Not specified'}`,
+            `- **Location / Timezone**: ${data.location || 'Not specified'}`,
+            `- **Preferred Contact / Handle**: ${data.preferredHandle || 'Not specified'}`,
+            ...categorized.identity.map(f => `- **Background & Education**: ${f}`)
+        ].join('\n');
+
+        const personaLines = [
+            `- **Preferred Interaction Style**: ${styleLabel}`,
+            ...categorized.persona.map(f => `- **Preference / Stack**: ${f}`),
+            ...categorized.dislikes.map(f => `- **Dislike / Constraint**: ${f}`)
+        ].join('\n');
+
+        const workLines = [
+            `- **Current Position**: ${data.role || 'Not specified'}`,
+            ...categorized.work.map(f => `- **Project / Career Detail**: ${f}`)
+        ].join('\n');
+
+        const routineLines = categorized.routines.length > 0
+            ? categorized.routines.map(f => `- **Routine / Habit**: ${f}`).join('\n')
+            : '- None recorded yet.';
 
         const zehnContent = `# Zehn: Long-Term Memory Index & Knowledge Vault
 
@@ -377,27 +476,22 @@ ${renumberedTurns}`.trim();
 - [SEC-07] System & Technical Config
 
 ## [SEC-01] User Identity & Core Profile
-- **Full / Display Name**: ${data.displayName || 'User'}
-- **Role / Occupation**: ${data.role || 'Not specified'}
-- **Location / Timezone**: ${data.location || 'Not specified'}
-- **Preferred Contact / Handle**: ${data.preferredHandle || 'Not specified'}
+${identityLines}
 
 ## [SEC-02] People & Relationships
 - None recorded yet.
 
 ## [SEC-03] Persona & Communication Preferences
-- **Preferred Interaction Style**: ${styleLabel}
-- **Preferences, Stack & Work Profile**:
-${prefText}${dislikeText ? `\n- **Dislikes & Things to Avoid**:\n${dislikeText}` : ''}
+${personaLines}
 
 ## [SEC-04] Work, Career & Projects
-- **Current Position**: ${data.role || 'Not specified'}
+${workLines}
 
 ## [SEC-05] Contact Information & Channels
 - **Email**: ${data.preferredHandle || 'Not specified'}
 
 ## [SEC-06] Health, Habits & Routines
-- None recorded yet.
+${routineLines}
 
 ## [SEC-07] System & Technical Config
 - **Preferred UI Mode**: Dark mode
