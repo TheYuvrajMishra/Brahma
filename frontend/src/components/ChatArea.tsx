@@ -17,7 +17,7 @@ import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
 interface ChatAreaProps {
     sidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
-    connected: boolean;
+    connected?: boolean;
     messages: Message[];
     isTyping: boolean;
     currentTelemetry?: TelemetryStep[];
@@ -125,7 +125,6 @@ const ThinkingStatus: React.FC = () => {
 export const ChatArea: React.FC<ChatAreaProps> = ({
     sidebarOpen,
     setSidebarOpen,
-    connected,
     messages,
     isTyping,
     inputValue,
