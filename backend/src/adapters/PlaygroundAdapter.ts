@@ -6,12 +6,15 @@ import fs from 'fs';
 import { Adapter } from './Adapter';
 import { NormalizedMessage, PipelineResponse } from '../types/Message';
 import { ChatSession } from '../models/ChatSession';
+import { SessionContext } from '../models/SessionContext';
 import { User } from '../models/User';
 import { config } from '../config';
 import { EventBus, SystemEvents } from '../core/EventBus';
 import { CryptoUtils } from '../core/CryptoUtils';
 import { SessionUtils } from '../core/SessionUtils';
 import { MemoryManager } from '../core/MemoryManager';
+import { ContextStoreManager } from '../core/ContextStoreManager';
+import { Logger } from '../core/Logger';
 
 function parseCookies(header?: string): Record<string, string> {
     const cookies: Record<string, string> = {};
@@ -346,6 +349,44 @@ export class PlaygroundAdapter implements Adapter {
         app.post('/api/auth/logout', (req, res) => {
             res.clearCookie('brahma_session', { path: '/' });
             res.json({ success: true });
+        });
+
+        app.post('/api/auth/reset-account', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
+
+            try {
+                // 1. Delete all user chat sessions from MongoDB
+                await ChatSession.deleteMany({ userId });
+
+                // 2. Delete all user session contexts from MongoDB
+                await SessionContext.deleteMany({ userId });
+
+                // 3. Clear entity search cache for user
+                ContextStoreManager.clear(userId);
+
+                // 4. Delete user dedicated brain files on disk
+                await MemoryManager.deleteUserBrain(userId);
+
+                // 5. Reset user onboarding flags and profile details in MongoDB
+                const user = await User.findById(userId);
+                if (user) {
+                    user.onboardingCompleted = false;
+                    user.profileDetails = undefined;
+                    user.preferences = undefined;
+                    user.dislikes = undefined;
+                    user.interactionStyle = undefined;
+                    await user.save();
+                }
+
+                Logger.audit('ACCOUNT_RESET', { userId });
+                return res.json({ success: true, message: 'Account and brain context reset successfully.', user });
+            } catch (err: any) {
+                console.error('[Playground] Account reset error:', err);
+                return res.status(500).json({ success: false, error: err.message });
+            }
         });
 
         // ── Per-User Context File Endpoints ─────────────────────────

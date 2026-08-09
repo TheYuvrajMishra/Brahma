@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
     PiChatCircleLight, 
@@ -9,7 +9,8 @@ import {
     PiCheckLight, 
     PiXLight,
     PiTerminalLight,
-    PiSignOutLight
+    PiSignOutLight,
+    PiArrowCounterClockwiseLight
 } from 'react-icons/pi';
 import type { Session, UserProfile } from '../types';
 
@@ -29,6 +30,7 @@ interface SidebarProps {
     user?: UserProfile | null;
     onConnectGoogle?: () => void;
     onLogout?: () => void;
+    onResetAccount?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -47,7 +49,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     user,
     onConnectGoogle,
     onLogout,
+    onResetAccount,
 }) => {
+    const [resetConfirm, setResetConfirm] = useState(false);
+
     const formatTime = (dateStr: string) => {
         const diff = Date.now() - new Date(dateStr).getTime();
         const mins = Math.floor(diff / 60000);
@@ -105,7 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </Link>
                 </div>
 
-                {/* Google Workspace Connection Pill */}
+                {/* Google Workspace & User Profile Connection Pill */}
                 <div className="mx-1 p-3 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -127,8 +132,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
 
                     {googleConnected ? (
-                        <div className="flex items-center justify-between pt-1">
-                            <span className="text-[10px] font-mono text-emerald-400 truncate max-w-[110px]">
+                        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                            <span className="text-[10px] font-mono text-emerald-400 truncate max-w-[100px]">
                                 {user?.email || googleEmail || 'Connected'}
                             </span>
                             <div className="flex items-center gap-2">
@@ -156,6 +161,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         >
                             <span>Connect Google</span>
                         </button>
+                    )}
+
+                    {/* Reset Brain & Account Setup Button */}
+                    {onResetAccount && (
+                        <div className="pt-1.5 border-t border-white/5">
+                            {resetConfirm ? (
+                                <div className="flex items-center justify-between bg-red-950/40 p-1.5 rounded-xl border border-red-500/30">
+                                    <span className="text-[9px] font-medium text-red-300">Clear Brain & Restart?</span>
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => { setResetConfirm(false); onResetAccount(); }}
+                                            className="px-2 py-0.5 rounded-md bg-red-600 hover:bg-red-500 text-white text-[9px] font-medium transition-all cursor-pointer"
+                                        >
+                                            Confirm
+                                        </button>
+                                        <button
+                                            onClick={() => setResetConfirm(false)}
+                                            className="px-1.5 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[9px] font-medium transition-all cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setResetConfirm(true)}
+                                    className="w-full py-1 px-2 rounded-lg hover:bg-red-500/10 text-[10px] font-medium text-zinc-400 hover:text-red-400 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    title="Deletes all brain context, chat history & restarts onboarding"
+                                >
+                                    <PiArrowCounterClockwiseLight className="w-3 h-3 text-red-400" />
+                                    <span>Reset Brain & Setup</span>
+                                </button>
+                            )}
+                        </div>
                     )}
                 </div>
 

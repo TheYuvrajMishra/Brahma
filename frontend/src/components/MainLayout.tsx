@@ -143,6 +143,24 @@ export const MainLayout: React.FC = () => {
         if (socket) socket.disconnect();
     }, [socket]);
 
+    const resetAccount = useCallback(async () => {
+        try {
+            const res = await fetch('/api/auth/reset-account', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                if (socket) socket.disconnect();
+                setSessions([]);
+                setActiveSessionId(null);
+                checkAuthStatus();
+            } else {
+                alert(`Reset failed: ${data.error}`);
+            }
+        } catch (err) {
+            console.error('Reset account error:', err);
+            alert('Reset request failed. Ensure backend is running.');
+        }
+    }, [socket, checkAuthStatus]);
+
     const createNewSession = useCallback(() => {
         if (!socket) return;
         socket.emit('session:create', (data: any) => {
@@ -250,6 +268,7 @@ export const MainLayout: React.FC = () => {
                 user={user}
                 onConnectGoogle={connectGoogle}
                 onLogout={logout}
+                onResetAccount={resetAccount}
             />
 
             <div className="main-island">

@@ -419,4 +419,19 @@ ${renumberedTurns}`.trim();
 
         Logger.audit('BRAIN_SEEDED', { userId, displayName: data.displayName, interactionStyle: data.interactionStyle });
     }
+
+    /**
+     * Deletes the user's dedicated brain folder and all its contents.
+     */
+    static async deleteUserBrain(userId: string): Promise<void> {
+        try {
+            const userDir = path.resolve(__dirname, '../../brahma [brain]/users', userId);
+            if (fs.existsSync(userDir)) {
+                await fs.promises.rm(userDir, { recursive: true, force: true });
+                Logger.audit('BRAIN_DELETED', { userId });
+            }
+        } catch (err) {
+            console.error(`Failed to delete brain directory for user ${userId}:`, err);
+        }
+    }
 }
