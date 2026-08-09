@@ -12,6 +12,7 @@ export class SetPersona implements ISkill {
     async execute(params: any): Promise<string> {
         const personaDescription = params.persona_description || '';
         const channelId = params._channel_id || '';
+        const userId = params.user_id || params.userId;
 
         if (!channelId) {
             return 'Failed to set persona: No active channel or session ID context detected.';
@@ -21,16 +22,14 @@ export class SetPersona implements ISkill {
             return 'Failed to set persona: No persona description provided.';
         }
 
-        // Check if resetting to default
         const isDefault = /^(default|brahma|reset|none)$/i.test(personaDescription.trim().toLowerCase());
         if (isDefault) {
-            await MemoryManager.updateCustomPersona('', channelId);
+            await MemoryManager.updateCustomPersona('', userId, channelId);
             return 'Successfully reset channel persona to the default Brahma persona.';
         }
 
         try {
-            // Read default soul/personality definition
-            const defaultSoul = await fs.promises.readFile(path.join(config.brainPath, 'atman.md'), 'utf-8');
+            const defaultSoul = await MemoryManager.getSoul(userId);
 
             const prompt = `
 You are a persona-generation engine.
@@ -50,8 +49,7 @@ Output ONLY the final markdown. Do not include markdown code fence ticks (e.g. \
                 return `Failed to set persona: LLM failed to generate a persona profile for "${personaDescription}".`;
             }
 
-            // Write the generated persona to MongoDB for the current channel
-            await MemoryManager.updateCustomPersona(customPersonaMarkdown.trim(), channelId);
+            await MemoryManager.updateCustomPersona(customPersonaMarkdown.trim(), userId, channelId);
             console.log(`[SetPersona] Updated custom persona for channel ${channelId} to: ${personaDescription}`);
             
             return `Successfully adapted my persona in this channel to be like "${personaDescription}".`;

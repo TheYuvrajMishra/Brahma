@@ -6,7 +6,7 @@ import { ExecutionResult } from '../pipeline/Executor';
 import { config } from '../config';
 
 export class ReflectionEngine {
-    static async runCompressionCycle(): Promise<void> {
+    static async runCompressionCycle(userId?: string): Promise<void> {
         if (!config.enableMemoryCompression) {
             Logger.info('ReflectionEngine', 'system', 0, 'SKIPPED', { reason: 'Memory compression disabled per user preference' });
             return;
@@ -14,7 +14,7 @@ export class ReflectionEngine {
 
         const startTime = Date.now();
         try {
-            const rawZehn = await MemoryManager.getZehn();
+            const rawZehn = await MemoryManager.getZehn(userId);
             if (!rawZehn || !rawZehn.trim()) {
                 Logger.info('ReflectionEngine', 'system', 0, 'SKIPPED', { reason: 'Memory is empty' });
                 return;
@@ -39,7 +39,6 @@ Review and optimize each section:
 - Combine duplicate observations and facts within their respective sections.
 - Resolve any conflicting statements, prioritizing more recent information.
 - Maintain the section headers exactly as formatted above.
-- Ensure girlfriend/partner info (e.g., Savaya), personal identity, contacts, projects, and routines are neatly categorized in their corresponding sections.
 
 Output the ENTIRE updated markdown file.
 Output ONLY the markdown content. Do NOT include markdown code fence ticks (\`\`\`) or any introductory/explanatory text.
@@ -48,15 +47,15 @@ Output ONLY the markdown content. Do NOT include markdown code fence ticks (\`\`
             const compressedResult = await LLMService.chat(prompt, `Here is the current memory file content:\n\n${rawZehn}`);
             if (compressedResult && compressedResult.trim()) {
                 let cleanedContent = compressedResult.trim();
-                // Strip markdown code fence markers if LLM accidentally outputted them
                 cleanedContent = cleanedContent.replace(/^```(markdown)?\n/i, '');
                 cleanedContent = cleanedContent.replace(/\n```$/g, '');
                 cleanedContent = cleanedContent.trim();
                 
-                await MemoryManager.updateZehn(cleanedContent);
+                await MemoryManager.updateZehn(cleanedContent, userId);
                 Logger.info('ReflectionEngine', 'system', Date.now() - startTime, 'COMPRESSED', { 
                     original_length: rawZehn.length, 
-                    compressed_length: cleanedContent.length 
+                    compressed_length: cleanedContent.length,
+                    userId
                 });
             } else {
                 Logger.info('ReflectionEngine', 'system', Date.now() - startTime, 'EMPTY_COMPRESSION_RESULT');
@@ -79,7 +78,7 @@ Did we learn anything new about the user's preferences, constraints, or workflow
 MANDATORY CONSTRAINTS:
 - Output ONLY a single-sentence fact if yes, or "NONE" if no.
 - Do NOT record system-level task execution status, tool performance, internal component configurations, or execution log messages.
-- The fact must focus strictly on the USER's profile, preferences, constraints, or work style (e.g. "User prefers Hinglish" or "User is CTO of Foontro").
+- The fact must focus strictly on the USER's profile, preferences, constraints, or work style.
 - Do NOT include markdown formatting, bullet points, headers, or any introductory conversational text.
         `.trim();
 
@@ -87,13 +86,12 @@ MANDATORY CONSTRAINTS:
             const evaluation = await LLMService.chat(systemPrompt, 'Evaluate task.');
             let cleaned = (evaluation || '').trim();
             
-            // Clean up headers or markdown prefixes
             cleaned = cleaned.replace(/^(##|###|\*|-)\s*/g, '');
             cleaned = cleaned.replace(/^Fact:\s*/i, '');
             
             if (cleaned && cleaned.toLowerCase() !== "none" && !cleaned.toLowerCase().includes("task evaluation") && cleaned.split('\n').length <= 2) {
-                await MemoryManager.appendZehnFact(cleaned);
-                Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'LEARNED_FACT', { fact: cleaned });
+                await MemoryManager.appendZehnFact(cleaned, undefined, message.user_id);
+                Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'LEARNED_FACT', { fact: cleaned, userId: message.user_id });
             } else {
                 Logger.info('ReflectionEngine', message.message_id, Date.now() - startTime, 'NO_NEW_LEARNINGS');
             }

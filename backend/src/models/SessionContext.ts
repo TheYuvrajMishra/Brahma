@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISessionContext extends Document {
+    userId: mongoose.Types.ObjectId | string;
     channelId: string;
     momentMarkdown: string;
     customPersona: string;
@@ -9,11 +10,14 @@ export interface ISessionContext extends Document {
 }
 
 const SessionContextSchema = new Schema<ISessionContext>({
-    channelId: { type: String, required: true, unique: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    channelId: { type: String, required: true, index: true },
     momentMarkdown: { type: String, default: '' },
     customPersona: { type: String, default: '' },
 }, {
     timestamps: true,
 });
+
+SessionContextSchema.index({ userId: 1, channelId: 1 }, { unique: true });
 
 export const SessionContext = mongoose.model<ISessionContext>('SessionContext', SessionContextSchema);

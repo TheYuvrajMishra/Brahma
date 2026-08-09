@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import io from 'socket.io-client';
-import type { Session } from '../types';
+import type { Session, UserProfile } from '../types';
 import { Sidebar } from './Sidebar';
+import { AuthScreen } from '../pages/AuthScreen';
+import { OnboardingPage } from '../pages/OnboardingPage';
 
 export interface LayoutContextType {
     socket: any;
@@ -15,9 +17,13 @@ export interface LayoutContextType {
     switchSession: (id: string) => void;
     sidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
+    user: UserProfile | null;
 }
 
 export const MainLayout: React.FC = () => {
+    const [user, setUser] = useState<UserProfile | null>(null);
+    const [authLoading, setAuthLoading] = useState(true);
+
     const [socket, setSocket] = useState<any>(null);
     const [connected, setConnected] = useState(false);
     const [sessions, setSessions] = useState<Session[]>([]);
@@ -30,25 +36,52 @@ export const MainLayout: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    // Determine active nav item from path
     const activePage = location.pathname.includes('/context') 
         ? 'context' 
         : location.pathname.includes('/logs') 
             ? 'logs' 
             : 'playground';
 
+    // ── Check Auth Status ──────────────────────────────────────────────
+    const checkAuthStatus = useCallback(async () => {
+        setAuthLoading(true);
+        try {
+            const res = await fetch('/api/auth/me');
+            const data = await res.json();
+            if (data.authenticated && data.user) {
+                setUser(data.user);
+                setGoogleConnected(true);
+                setGoogleEmail(data.user.email);
+            } else {
+                setUser(null);
+                setGoogleConnected(false);
+                setGoogleEmail('');
+            }
+        } catch (err) {
+            console.error('Auth status check failed:', err);
+            setUser(null);
+        } finally {
+            setAuthLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        checkAuthStatus();
+    }, [checkAuthStatus]);
+
     // ── Socket Setup ──────────────────────────────────────────────────
     useEffect(() => {
-        const newSocket = io();
+        if (!user || !user.onboardingCompleted) return;
+
+        const newSocket = io({ withCredentials: true });
         setSocket(newSocket);
 
         newSocket.on('connect', () => { 
             setConnected(true); 
-            // Query google status
             newSocket.emit('google:status', (res: any) => {
                 if (res) {
                     setGoogleConnected(!!res.connected);
-                    setGoogleEmail(res.email || '');
+                    setGoogleEmail(res.email || user.email);
                 }
             });
         });
@@ -64,14 +97,10 @@ export const MainLayout: React.FC = () => {
             setSessions(prev => prev.map(s => s.sessionId === data.sessionId ? { ...s, title: data.title } : s));
         });
 
-        // Listen for postMessage from OAuth popup window
         const handlePostMessage = (event: MessageEvent) => {
             if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
                 if (event.data.success) {
-                    setGoogleConnected(true);
-                    if (event.data.email) setGoogleEmail(event.data.email);
-                } else {
-                    alert(`Google Connection Failed: ${event.data.error || 'Unknown error'}`);
+                    checkAuthStatus();
                 }
             }
         };
@@ -81,7 +110,7 @@ export const MainLayout: React.FC = () => {
             newSocket.disconnect(); 
             window.removeEventListener('message', handlePostMessage);
         };
-    }, []);
+    }, [user, checkAuthStatus]);
 
     const connectGoogle = useCallback(async () => {
         try {
@@ -102,26 +131,16 @@ export const MainLayout: React.FC = () => {
         }
     }, []);
 
-    // ── Load sessions on connect ──────────────────────────────────────
-    useEffect(() => {
-        if (!socket || !connected) return;
-        loadSessions();
-    }, [socket, connected]);
-
-    const loadSessions = useCallback(() => {
-        if (!socket) return;
-        socket.emit('session:list', (data: any) => {
-            if (data.success && data.sessions.length > 0) {
-                setSessions(data.sessions);
-                setActiveSessionId(prev => {
-                    const exists = data.sessions.find((s: Session) => s.sessionId === prev);
-                    if (exists) return prev;
-                    return data.sessions[0].sessionId;
-                });
-            } else {
-                createNewSession();
-            }
-        });
+    const logout = useCallback(async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+        } catch (e) {
+            console.error('Logout error:', e);
+        }
+        setUser(null);
+        setGoogleConnected(false);
+        setGoogleEmail('');
+        if (socket) socket.disconnect();
     }, [socket]);
 
     const createNewSession = useCallback(() => {
@@ -139,6 +158,27 @@ export const MainLayout: React.FC = () => {
             }
         });
     }, [socket, navigate]);
+
+    const loadSessions = useCallback(() => {
+        if (!socket) return;
+        socket.emit('session:list', (data: any) => {
+            if (data.success && data.sessions.length > 0) {
+                setSessions(data.sessions);
+                setActiveSessionId(prev => {
+                    const exists = data.sessions.find((s: Session) => s.sessionId === prev);
+                    if (exists) return prev;
+                    return data.sessions[0].sessionId;
+                });
+            } else {
+                createNewSession();
+            }
+        });
+    }, [socket, createNewSession]);
+
+    useEffect(() => {
+        if (!socket || !connected) return;
+        loadSessions();
+    }, [socket, connected, loadSessions]);
 
     const deleteSession = useCallback((sessionId: string) => {
         if (!socket) return;
@@ -165,6 +205,25 @@ export const MainLayout: React.FC = () => {
         navigate('/playground');
     }, [navigate]);
 
+    if (authLoading) {
+        return (
+            <div className="min-h-screen w-full bg-[#09090b] text-white flex items-center justify-center font-sans">
+                <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-white/20 border-t-emerald-400 rounded-full animate-spin" />
+                    <span className="text-xs font-mono tracking-widest text-zinc-400">LOADING BRAHMA...</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (!user) {
+        return <AuthScreen onLoginSuccess={checkAuthStatus} />;
+    }
+
+    if (!user.onboardingCompleted) {
+        return <OnboardingPage user={user} onOnboardingComplete={checkAuthStatus} />;
+    }
+
     return (
         <div className="app-container">
             {/* SVG Noise Filter */}
@@ -188,7 +247,9 @@ export const MainLayout: React.FC = () => {
                 activePage={activePage}
                 googleConnected={googleConnected}
                 googleEmail={googleEmail}
+                user={user}
                 onConnectGoogle={connectGoogle}
+                onLogout={logout}
             />
 
             <div className="main-island">
@@ -202,7 +263,8 @@ export const MainLayout: React.FC = () => {
                     deleteSession,
                     switchSession,
                     sidebarOpen,
-                    setSidebarOpen
+                    setSidebarOpen,
+                    user
                 }} />
             </div>
         </div>

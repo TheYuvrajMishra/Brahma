@@ -40,7 +40,7 @@ export class Router {
         const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg', 'save', 'update', 'append', 'read', 'put', 'insert', 'add', 'remove', 'delete', 'clear', 'fix', 'clean', 'format', 'design', 'style'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
-        const moment = await MemoryManager.getMoment(message.channel_id);
+        const moment = await MemoryManager.getMoment(message.user_id, message.channel_id);
         const hasActiveTask = /active task:\s*(?!none\b)\w+/i.test(moment);
         const confirmationWords = ['yes', 'confirm', 'yup', 'do it', 'go ahead', 'sure', 'ok', 'okay', 'yep', 'y', 'correct'];
         const isNumber = /^\d+$/.test(text);
@@ -110,7 +110,7 @@ Classify the user's message into:
    - "other": Anything else.
 
 ### Context (Current Conversation Memory)
-\${moment}
+${moment}
 
 Respond ONLY with a JSON object in this format:
 {"bucket": "simple" | "complex", "intent": "casual_chat" | "emotional_support" | "email_request" | "coding" | "research" | "command_execution" | "spreadsheet_request" | "other", "confidence": <float between 0 and 1>}

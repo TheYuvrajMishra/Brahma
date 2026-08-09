@@ -21,3 +21,21 @@ export interface Session {
     title: string;
     updatedAt: string;
 }
+
+export interface UserProfile {
+    id: string;
+    googleId: string;
+    email: string;
+    name: string;
+    picture: string;
+    onboardingCompleted: boolean;
+    profileDetails?: {
+        displayName?: string;
+        role?: string;
+        location?: string;
+        preferredHandle?: string;
+    };
+    preferences?: string;
+    dislikes?: string;
+    interactionStyle?: 'analytical' | 'conversational' | 'executive';
+}

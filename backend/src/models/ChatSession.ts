@@ -8,6 +8,7 @@ export interface IChatMessage {
 }
 
 export interface IChatSession extends Document {
+    userId: mongoose.Types.ObjectId | string;
     sessionId: string;
     title: string;
     messages: IChatMessage[];
@@ -23,11 +24,14 @@ const ChatMessageSchema = new Schema<IChatMessage>({
 });
 
 const ChatSessionSchema = new Schema<IChatSession>({
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     sessionId: { type: String, required: true, unique: true, index: true },
     title: { type: String, default: 'New Chat' },
     messages: { type: [ChatMessageSchema], default: [] },
 }, {
-    timestamps: true, // auto createdAt & updatedAt
+    timestamps: true,
 });
+
+ChatSessionSchema.index({ userId: 1, sessionId: 1 });
 
 export const ChatSession = mongoose.model<IChatSession>('ChatSession', ChatSessionSchema);

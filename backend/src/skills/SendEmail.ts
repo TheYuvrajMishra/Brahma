@@ -1,5 +1,6 @@
 import { google, gmail_v1 } from 'googleapis';
 import { ISkill } from '../types/Skill';
+import { GoogleAuthUtils } from '../core/GoogleAuthUtils';
 
 export class SendEmail implements ISkill {
     name = 'send-email';
@@ -9,6 +10,7 @@ export class SendEmail implements ISkill {
         const recipient = params.recipient;
         const subject = params.subject || 'No Subject';
         let body = params.body || '';
+        const userId = params.user_id || params.userId;
         
         body = this.sanitizeEmailBody(body);
 
@@ -16,18 +18,8 @@ export class SendEmail implements ISkill {
             return 'Failed to send email: No recipient provided.';
         }
 
-        if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
-            return 'Failed to send email: Gmail credentials not configured in .env.';
-        }
-
         try {
-            const oauth2Client = new google.auth.OAuth2(
-                process.env.GMAIL_CLIENT_ID,
-                process.env.GMAIL_CLIENT_SECRET,
-                process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground'
-            );
-
-            oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+            const oauth2Client = await GoogleAuthUtils.getOAuth2ClientForUser(userId);
             const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
             const emailLines = [];
@@ -59,25 +51,20 @@ export class SendEmail implements ISkill {
     }
 
     private sanitizeEmailBody(body: string): string {
-        // 1. Remove markdown code blocks if present (e.g. ```text or ```)
         let cleaned = body.replace(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, '$1');
-        cleaned = cleaned.replace(/```[\s\S]*?$/g, ''); // Unclosed code blocks
+        cleaned = cleaned.replace(/```[\s\S]*?$/g, '');
 
-        // 2. Remove leading/trailing whitespace
         cleaned = cleaned.trim();
 
-        // 3. Remove conversational prefixes (e.g. "Here is a draft:", "Here is the email:")
         const lines = cleaned.split('\n');
         let contentStartIndex = 0;
         
         for (let i = 0; i < Math.min(lines.length, 5); i++) {
             const line = lines[i].trim();
-            // If we hit a salutation, stop looking for filler.
             if (/^(dear|hi|hello|hey|to\b)/i.test(line)) {
                 contentStartIndex = i;
                 break;
             }
-            // If we see "Subject:" line, we can skip it since subject is passed in params
             if (/^subject:/i.test(line)) {
                 contentStartIndex = i + 1;
                 break;
@@ -88,7 +75,6 @@ export class SendEmail implements ISkill {
             cleaned = lines.slice(contentStartIndex).join('\n').trim();
         }
 
-        // 4. Remove any step outputs or dependency context patterns if they got leaked
         cleaned = cleaned.replace(/--- Output from Step \d+ [\s\S]*?---/g, '');
         
         return cleaned.trim();

@@ -6,8 +6,54 @@ import fs from 'fs';
 import { Adapter } from './Adapter';
 import { NormalizedMessage, PipelineResponse } from '../types/Message';
 import { ChatSession } from '../models/ChatSession';
+import { User } from '../models/User';
 import { config } from '../config';
 import { EventBus, SystemEvents } from '../core/EventBus';
+import { CryptoUtils } from '../core/CryptoUtils';
+import { SessionUtils } from '../core/SessionUtils';
+import { MemoryManager } from '../core/MemoryManager';
+
+function parseCookies(header?: string): Record<string, string> {
+    const cookies: Record<string, string> = {};
+    if (!header) return cookies;
+    const parts = header.split(';');
+    for (const part of parts) {
+        const [name, ...val] = part.trim().split('=');
+        if (name && val.length > 0) {
+            cookies[name] = decodeURIComponent(val.join('='));
+        }
+    }
+    return cookies;
+}
+
+function getUserIdFromReq(req: express.Request): string | null {
+    const cookies = parseCookies(req.headers.cookie);
+    if (cookies.brahma_session) {
+        const userId = SessionUtils.verify(cookies.brahma_session);
+        if (userId) return userId;
+    }
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        const userId = SessionUtils.verify(token);
+        if (userId) return userId;
+    }
+    return null;
+}
+
+function getUserIdFromSocket(socket: Socket): string | null {
+    const cookies = parseCookies(socket.handshake.headers.cookie);
+    if (cookies.brahma_session) {
+        const userId = SessionUtils.verify(cookies.brahma_session);
+        if (userId) return userId;
+    }
+    const token = socket.handshake.auth?.token || socket.handshake.query?.token;
+    if (typeof token === 'string') {
+        const userId = SessionUtils.verify(token);
+        if (userId) return userId;
+    }
+    return null;
+}
 
 export class PlaygroundAdapter implements Adapter {
     private io: Server;
@@ -20,14 +66,15 @@ export class PlaygroundAdapter implements Adapter {
         const app = express();
         const httpServer = createServer(app);
         this.io = new Server(httpServer, {
-            cors: { origin: '*' }
+            cors: { origin: '*', credentials: true }
         });
 
         this.setupTelemetryBus();
 
-        // CORS and Json Middleware
+        // CORS and JSON Middleware
         app.use((req, res, next) => {
-            res.header('Access-Control-Allow-Origin', '*');
+            res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+            res.header('Access-Control-Allow-Credentials', 'true');
             res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-file-name');
             res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
             if (req.method === 'OPTIONS') {
@@ -38,7 +85,6 @@ export class PlaygroundAdapter implements Adapter {
         app.use(express.json());
         app.use(express.static(path.join(__dirname, '../../public')));
 
-        // Ensure temp uploads folder exists
         const uploadDir = path.join(__dirname, '../../uploads');
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true });
@@ -67,11 +113,45 @@ export class PlaygroundAdapter implements Adapter {
             });
         });
 
-        // Google OAuth 2.0 Auth URL generator
+        // ── Auth Endpoints ──────────────────────────────────────────
+
+        app.get('/api/auth/me', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) {
+                return res.json({ authenticated: false });
+            }
+            try {
+                const user = await User.findById(userId);
+                if (!user) {
+                    return res.json({ authenticated: false });
+                }
+                return res.json({
+                    authenticated: true,
+                    user: {
+                        id: user._id,
+                        googleId: user.googleId,
+                        email: user.email,
+                        name: user.name,
+                        picture: user.picture,
+                        onboardingCompleted: user.onboardingCompleted,
+                        profileDetails: user.profileDetails,
+                        preferences: user.preferences,
+                        dislikes: user.dislikes,
+                        interactionStyle: user.interactionStyle
+                    }
+                });
+            } catch (err) {
+                return res.json({ authenticated: false });
+            }
+        });
+
         app.get('/api/auth/google/url', (req, res) => {
-            const clientId = process.env.GMAIL_CLIENT_ID || '';
+            const clientId = process.env.GMAIL_CLIENT_ID;
+            if (!clientId) {
+                return res.status(500).json({ error: 'GMAIL_CLIENT_ID is not configured in backend environment.' });
+            }
             const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
-            const scopeList = [
+            const scopes = [
                 'https://mail.google.com/',
                 'https://www.googleapis.com/auth/spreadsheets',
                 'https://www.googleapis.com/auth/calendar',
@@ -80,21 +160,21 @@ export class PlaygroundAdapter implements Adapter {
                 'https://www.googleapis.com/auth/userinfo.email',
                 'https://www.googleapis.com/auth/userinfo.profile'
             ];
-            const scope = encodeURIComponent(scopeList.join(' '));
-            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}&access_type=offline&prompt=consent`;
-            res.json({ url: authUrl, configured: !!clientId });
+            const scopeStr = encodeURIComponent(scopes.join(' '));
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scopeStr}&access_type=offline&prompt=consent`;
+
+            res.json({ url: authUrl });
         });
 
-        // Google OAuth 2.0 Callback handler
         app.get('/api/auth/google/callback', async (req, res) => {
             const code = req.query.code as string;
             if (!code) {
-                return res.send('<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"No code provided"}, "*"); window.close();</script>');
+                return res.status(400).send('<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"No code provided"}, "*"); window.close();</script>');
             }
 
             try {
-                const clientId = process.env.GMAIL_CLIENT_ID || '';
-                const clientSecret = process.env.GMAIL_CLIENT_SECRET || '';
+                const clientId = process.env.GMAIL_CLIENT_ID;
+                const clientSecret = process.env.GMAIL_CLIENT_SECRET;
                 const redirectUri = process.env.GMAIL_REDIRECT_URI || 'http://localhost:5000/api/auth/google/callback';
 
                 const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -102,8 +182,8 @@ export class PlaygroundAdapter implements Adapter {
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams({
                         code,
-                        client_id: clientId,
-                        client_secret: clientSecret,
+                        client_id: clientId || '',
+                        client_secret: clientSecret || '',
                         redirect_uri: redirectUri,
                         grant_type: 'authorization_code'
                     })
@@ -111,27 +191,17 @@ export class PlaygroundAdapter implements Adapter {
 
                 const tokens: any = await tokenRes.json();
 
-                if (!tokenRes.ok || !tokens.refresh_token) {
-                    const errDetail = tokens.error_description || tokens.error || 'Failed to obtain refresh token';
+                if (!tokenRes.ok || (!tokens.access_token && !tokens.refresh_token)) {
+                    const errDetail = tokens.error_description || tokens.error || 'Failed to obtain Google tokens';
                     return res.send(`<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"${errDetail}"}, "*"); window.close();</script>`);
                 }
 
-                // Update process.env and rewrite .env file
-                process.env.GMAIL_REFRESH_TOKEN = tokens.refresh_token;
-                const envPath = path.join(__dirname, '../../.env');
-                if (fs.existsSync(envPath)) {
-                    let envContent = fs.readFileSync(envPath, 'utf-8');
-                    if (envContent.includes('GMAIL_REFRESH_TOKEN=')) {
-                        envContent = envContent.replace(/GMAIL_REFRESH_TOKEN=.*/g, `GMAIL_REFRESH_TOKEN=${tokens.refresh_token}`);
-                    } else {
-                        envContent += `\nGMAIL_REFRESH_TOKEN=${tokens.refresh_token}`;
-                    }
-                    fs.writeFileSync(envPath, envContent, 'utf-8');
-                }
-
-                // Fetch user info for UI confirmation
+                // Fetch Google User Profile
                 let email = '';
                 let picture = '';
+                let name = '';
+                let googleId = '';
+
                 if (tokens.access_token) {
                     try {
                         const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -140,15 +210,65 @@ export class PlaygroundAdapter implements Adapter {
                         const userData: any = await userRes.json();
                         email = userData.email || '';
                         picture = userData.picture || '';
-                        if (email) {
-                            process.env.GMAIL_WATCH_ADDRESS = email;
-                        }
+                        name = userData.name || '';
+                        googleId = userData.id || '';
                     } catch (e) {
-                        console.warn('[Playground] Could not fetch user profile:', e);
+                        console.warn('[Playground] Could not fetch Google user profile:', e);
                     }
                 }
 
-                this.io.emit('google:connected', { connected: true, email: email || process.env.GMAIL_WATCH_ADDRESS, picture });
+                if (!googleId && !email) {
+                    return res.send(`<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"Could not fetch user profile from Google"}, "*"); window.close();</script>`);
+                }
+
+                // Encrypt tokens at rest
+                const encAccess = tokens.access_token ? CryptoUtils.encrypt(tokens.access_token) : { encrypted: '', iv: '', authTag: '' };
+                const encRefresh = tokens.refresh_token ? CryptoUtils.encrypt(tokens.refresh_token) : { encrypted: '', iv: '', authTag: '' };
+
+                let user = await User.findOne({ $or: [{ googleId }, { email }] });
+                if (!user) {
+                    user = new User({
+                        googleId: googleId || email,
+                        email,
+                        name,
+                        picture,
+                        encryptedAccessToken: encAccess.encrypted,
+                        accessTokenIv: encAccess.iv,
+                        accessTokenTag: encAccess.authTag,
+                        encryptedRefreshToken: encRefresh.encrypted,
+                        refreshTokenIv: encRefresh.iv,
+                        refreshTokenTag: encRefresh.authTag,
+                        onboardingCompleted: false
+                    });
+                } else {
+                    user.name = name || user.name;
+                    user.picture = picture || user.picture;
+                    if (tokens.access_token) {
+                        user.encryptedAccessToken = encAccess.encrypted;
+                        user.accessTokenIv = encAccess.iv;
+                        user.accessTokenTag = encAccess.authTag;
+                    }
+                    if (tokens.refresh_token) {
+                        user.encryptedRefreshToken = encRefresh.encrypted;
+                        user.refreshTokenIv = encRefresh.iv;
+                        user.refreshTokenTag = encRefresh.authTag;
+                    }
+                }
+                await user.save();
+
+                // Ensure per-user brain instance directory exists
+                MemoryManager.ensureUserBrain(user._id.toString());
+
+                // Set signed session cookie
+                const sessionToken = SessionUtils.sign(user._id.toString());
+                res.cookie('brahma_session', sessionToken, {
+                    httpOnly: true,
+                    sameSite: 'lax',
+                    path: '/',
+                    maxAge: 30 * 24 * 60 * 60 * 1000
+                });
+
+                this.io.emit('google:connected', { connected: true, email, picture, userId: user._id.toString() });
 
                 res.send(`
                     <html>
@@ -159,161 +279,286 @@ export class PlaygroundAdapter implements Adapter {
                             </div>
                             <script>
                                 if (window.opener) {
-                                    window.opener.postMessage({ type: "GOOGLE_AUTH_SUCCESS", success: true, email: "${email}" }, "*");
+                                    window.opener.postMessage({
+                                        type: "GOOGLE_AUTH_SUCCESS",
+                                        success: true,
+                                        email: "${email}",
+                                        userId: "${user._id.toString()}",
+                                        onboardingCompleted: ${user.onboardingCompleted}
+                                    }, "*");
                                 }
-                                setTimeout(() => window.close(), 1200);
+                                setTimeout(() => window.close(), 1000);
                             </script>
                         </body>
                     </html>
                 `);
             } catch (err: any) {
-                console.error('[Playground] OAuth Callback error:', err);
-                res.send(`<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"${err.message || String(err)}"}, "*"); window.close();</script>`);
+                console.error('[Playground] OAuth callback failed:', err);
+                res.send(`<script>window.opener?.postMessage({type:"GOOGLE_AUTH_SUCCESS", success:false, error:"${err.message}"}, "*"); window.close();</script>`);
             }
         });
 
-        this.io.on('connection', (socket) => {
-            console.log(`[Playground] User connected: ${socket.id}`);
+        app.post('/api/auth/onboard', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized' });
+            }
 
-            // ── Brain File Management Events ───────────────────────────
+            try {
+                const user = await User.findById(userId);
+                if (!user) {
+                    return res.status(404).json({ success: false, error: 'User not found' });
+                }
+
+                const { displayName, role, location, preferredHandle, preferences, dislikes, interactionStyle } = req.body;
+
+                user.profileDetails = {
+                    displayName: displayName || user.name,
+                    role: role || '',
+                    location: location || '',
+                    preferredHandle: preferredHandle || user.email
+                };
+                user.preferences = preferences || '';
+                user.dislikes = dislikes || '';
+                user.interactionStyle = interactionStyle || 'conversational';
+                user.onboardingCompleted = true;
+
+                await user.save();
+
+                // Seed dedicated brain core/* files with user profile & preferences
+                await MemoryManager.seedUserBrain(userId, {
+                    displayName: user.profileDetails.displayName,
+                    role: user.profileDetails.role,
+                    location: user.profileDetails.location,
+                    preferredHandle: user.profileDetails.preferredHandle,
+                    preferences: user.preferences,
+                    dislikes: user.dislikes,
+                    interactionStyle: user.interactionStyle
+                });
+
+                return res.json({ success: true, user });
+            } catch (err: any) {
+                console.error('[Playground] Onboarding error:', err);
+                return res.status(500).json({ success: false, error: err.message });
+            }
+        });
+
+        app.post('/api/auth/logout', (req, res) => {
+            res.clearCookie('brahma_session', { path: '/' });
+            res.json({ success: true });
+        });
+
+        // ── Per-User Context File Endpoints ─────────────────────────
+
+        app.get('/api/context/:file', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized context access' });
+            }
+            const fileName = req.params.file;
+            const allowed = ['atman.md', 'zehn.md', 'moment.md', 'hunar.md', 'planner.md', 'executor.md', 'researcher.md'];
+            if (!allowed.includes(fileName)) {
+                return res.status(400).json({ success: false, error: 'Invalid context file' });
+            }
+
+            try {
+                const userBrainPath = MemoryManager.getUserBrainPath(userId);
+                const filePath = path.join(userBrainPath, fileName);
+                if (!fs.existsSync(filePath)) {
+                    return res.status(404).json({ success: false, error: 'File not found' });
+                }
+                const content = await fs.promises.readFile(filePath, 'utf-8');
+                res.json({ success: true, fileName, content });
+            } catch (err: any) {
+                res.status(500).json({ success: false, error: err.message });
+            }
+        });
+
+        app.post('/api/context/:file', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized context write' });
+            }
+            const fileName = req.params.file;
+            const allowed = ['atman.md', 'zehn.md', 'moment.md', 'hunar.md', 'planner.md', 'executor.md', 'researcher.md'];
+            if (!allowed.includes(fileName)) {
+                return res.status(400).json({ success: false, error: 'Invalid context file' });
+            }
+            const { content } = req.body;
+            if (typeof content !== 'string') {
+                return res.status(400).json({ success: false, error: 'Content must be string' });
+            }
+
+            try {
+                const userBrainPath = MemoryManager.getUserBrainPath(userId);
+                const filePath = path.join(userBrainPath, fileName);
+                await fs.promises.writeFile(filePath, content, 'utf-8');
+                res.json({ success: true, fileName });
+            } catch (err: any) {
+                res.status(500).json({ success: false, error: err.message });
+            }
+        });
+
+        // ── WebSocket Communication ──────────────────────────────────
+
+        this.io.on('connection', (socket: Socket) => {
+            const userId = getUserIdFromSocket(socket);
+            if (userId) {
+                socket.data.userId = userId;
+            }
+
+            socket.on('google:status', async (callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (activeUserId) {
+                    try {
+                        const user = await User.findById(activeUserId);
+                        if (user) {
+                            if (callback) callback({ connected: !!user.encryptedRefreshToken, email: user.email, picture: user.picture });
+                            return;
+                        }
+                    } catch {}
+                }
+                if (callback) callback({ connected: false });
+            });
+
+            // ── Brain Context Files (Strictly Scoped Per-User) ──────────────────────────
 
             socket.on('brain:list', async (callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
                 try {
-                    const dirPath = config.brainPath;
-                    if (!fs.existsSync(dirPath)) {
-                        if (callback) callback({ success: false, error: 'Brain directory does not exist' });
-                        return;
-                    }
-                    const files = fs.readdirSync(dirPath);
-                    const markdownFiles = files.filter(f => f.endsWith('.md'));
-                    if (callback) callback({ success: true, files: markdownFiles });
-                } catch (err) {
-                    console.error('[Playground] brain:list failed:', err);
-                    if (callback) callback({ success: false, error: String(err) });
+                    const userBrainPath = MemoryManager.getUserBrainPath(activeUserId);
+                    const files = fs.readdirSync(userBrainPath).filter(f => f.endsWith('.md'));
+                    if (callback) callback({ success: true, files });
+                } catch (err: any) {
+                    if (callback) callback({ success: false, error: err.message });
                 }
             });
 
             socket.on('brain:read', async (filename: string, callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
+                const allowed = ['atman.md', 'zehn.md', 'moment.md', 'hunar.md', 'planner.md', 'executor.md', 'researcher.md'];
+                if (!allowed.includes(filename)) {
+                    if (callback) callback({ success: false, error: 'Invalid filename' });
+                    return;
+                }
                 try {
-                    const safeName = path.basename(filename);
-                    if (!safeName.endsWith('.md')) {
-                        if (callback) callback({ success: false, error: 'Only markdown files are allowed' });
-                        return;
-                    }
-                    const filePath = path.join(config.brainPath, safeName);
-                    if (!fs.existsSync(filePath)) {
-                        if (callback) callback({ success: false, error: 'File not found' });
-                        return;
-                    }
-                    const content = fs.readFileSync(filePath, 'utf-8');
-                    if (callback) callback({ success: true, content });
-                } catch (err) {
-                    console.error('[Playground] brain:read failed:', err);
-                    if (callback) callback({ success: false, error: String(err) });
+                    const userBrainPath = MemoryManager.getUserBrainPath(activeUserId);
+                    const filePath = path.join(userBrainPath, filename);
+                    const content = await fs.promises.readFile(filePath, 'utf-8');
+                    if (callback) callback({ success: true, filename, content });
+                } catch (err: any) {
+                    if (callback) callback({ success: false, error: err.message });
                 }
             });
 
-            socket.on('brain:write', async (data: { filename: string; content: string }, callback?: (data: any) => void) => {
+            socket.on('brain:write', async (payload: { filename: string; content: string }, callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
+                const allowed = ['atman.md', 'zehn.md', 'moment.md', 'hunar.md', 'planner.md', 'executor.md', 'researcher.md'];
+                if (!allowed.includes(payload.filename)) {
+                    if (callback) callback({ success: false, error: 'Invalid filename' });
+                    return;
+                }
                 try {
-                    const safeName = path.basename(data.filename);
-                    if (!safeName.endsWith('.md')) {
-                        if (callback) callback({ success: false, error: 'Only markdown files can be updated' });
-                        return;
-                    }
-                    const filePath = path.join(config.brainPath, safeName);
-                    fs.writeFileSync(filePath, data.content, 'utf-8');
-                    console.log(`[Playground] Updated brain file: ${safeName}`);
-                    if (callback) callback({ success: true });
-                } catch (err) {
-                    console.error('[Playground] brain:write failed:', err);
-                    if (callback) callback({ success: false, error: String(err) });
+                    const userBrainPath = MemoryManager.getUserBrainPath(activeUserId);
+                    const filePath = path.join(userBrainPath, payload.filename);
+                    await fs.promises.writeFile(filePath, payload.content, 'utf-8');
+                    if (callback) callback({ success: true, filename: payload.filename });
+                } catch (err: any) {
+                    if (callback) callback({ success: false, error: err.message });
                 }
             });
 
-            // ── Telemetry / Audit Logs Events ───────────────────────────
+            // ── Sessions Management (Strictly Scoped Per-User) ──────────────────────────
 
-            socket.on('logs:read', async (callback?: (data: any) => void) => {
-                try {
-                    const logPath = path.join(__dirname, '../../audit.log');
-                    if (!fs.existsSync(logPath)) {
-                        if (callback) callback({ success: true, logs: [] });
-                        return;
-                    }
-                    const content = fs.readFileSync(logPath, 'utf-8');
-                    const lines = content.split('\n').filter(l => l.trim() !== '');
-                    const logs = lines.map(line => {
-                        try {
-                            return JSON.parse(line);
-                        } catch {
-                            return { timestamp: new Date().toISOString(), level: 'INFO', details: line };
-                        }
-                    });
-                    if (callback) callback({ success: true, logs: logs.reverse().slice(0, 100) });
-                } catch (err) {
-                    console.error('[Playground] logs:read failed:', err);
-                    if (callback) callback({ success: false, error: String(err) });
+            socket.on('session:list', async (callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, sessions: [], error: 'Unauthenticated' });
+                    return;
                 }
-            });
-
-            // ── Google Account Status Event ──────────────────────────────
-            socket.on('google:status', (callback?: (data: any) => void) => {
-                const hasRefreshToken = !!process.env.GMAIL_REFRESH_TOKEN && process.env.GMAIL_REFRESH_TOKEN.length > 5;
-                const email = process.env.GMAIL_WATCH_ADDRESS || '';
-                if (callback) {
-                    callback({
-                        connected: hasRefreshToken,
-                        email: hasRefreshToken ? email : ''
-                    });
+                try {
+                    const sessions = await ChatSession.find({ userId: activeUserId }).sort({ updatedAt: -1 }).lean();
+                    const list = sessions.map(s => ({
+                        sessionId: s.sessionId,
+                        title: s.title,
+                        updatedAt: s.updatedAt,
+                        messageCount: s.messages?.length || 0
+                    }));
+                    if (callback) callback({ success: true, sessions: list });
+                } catch (err) {
+                    console.error('[Playground] session:list failed:', err);
+                    if (callback) callback({ success: false, error: String(err) });
                 }
             });
 
             socket.on('session:create', async (callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
                 try {
-                    const sessionId = `session_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-                    const session = new ChatSession({
-                        sessionId,
+                    const newSessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                    const newSession = new ChatSession({
+                        userId: activeUserId,
+                        sessionId: newSessionId,
                         title: 'New Chat',
-                        messages: [],
+                        messages: []
                     });
-                    await session.save();
-                    console.log(`[Playground] Created session: ${sessionId}`);
-                    if (callback) callback({ success: true, sessionId, title: session.title, createdAt: session.createdAt });
+                    await newSession.save();
+                    console.log(`[Playground] Created session: ${newSessionId} for user ${activeUserId}`);
+                    if (callback) callback({ success: true, sessionId: newSessionId, title: 'New Chat' });
                 } catch (err) {
                     console.error('[Playground] session:create failed:', err);
                     if (callback) callback({ success: false, error: String(err) });
                 }
             });
 
-            socket.on('session:list', async (callback?: (data: any) => void) => {
-                try {
-                    const sessions = await ChatSession.find({}, { sessionId: 1, title: 1, updatedAt: 1, createdAt: 1, _id: 0 })
-                        .sort({ updatedAt: -1 })
-                        .lean();
-                    if (callback) callback({ success: true, sessions });
-                } catch (err) {
-                    console.error('[Playground] session:list failed:', err);
-                    if (callback) callback({ success: false, sessions: [] });
-                }
-            });
-
             socket.on('session:load', async (sessionId: string, callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
                 try {
-                    const session = await ChatSession.findOne({ sessionId }).lean();
-                    if (session) {
-                        if (callback) callback({ success: true, messages: session.messages, title: session.title });
-                    } else {
-                        if (callback) callback({ success: false, messages: [], error: 'Session not found' });
+                    const session = await ChatSession.findOne({ userId: activeUserId, sessionId }).lean();
+                    if (!session) {
+                        if (callback) callback({ success: false, error: 'Session not found' });
+                        return;
                     }
+                    if (callback) callback({
+                        success: true,
+                        sessionId: session.sessionId,
+                        title: session.title,
+                        messages: session.messages
+                    });
                 } catch (err) {
                     console.error('[Playground] session:load failed:', err);
-                    if (callback) callback({ success: false, messages: [] });
+                    if (callback) callback({ success: false, error: String(err) });
                 }
             });
 
             socket.on('session:delete', async (sessionId: string, callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
                 try {
-                    await ChatSession.deleteOne({ sessionId });
-                    console.log(`[Playground] Deleted session: ${sessionId}`);
+                    await ChatSession.deleteOne({ userId: activeUserId, sessionId });
+                    console.log(`[Playground] Deleted session: ${sessionId} for user ${activeUserId}`);
                     if (callback) callback({ success: true });
                 } catch (err) {
                     console.error('[Playground] session:delete failed:', err);
@@ -321,12 +566,17 @@ export class PlaygroundAdapter implements Adapter {
                 }
             });
 
-            // ── Chat Message (with session persistence) ─────────────────
+            // ── Chat Message ─────────────────
 
             socket.on('chat message', async (payload: string | { text: string; sessionId: string }) => {
                 if (!this.onMessageCallback) return;
 
-                // Support both legacy (string) and new ({text, sessionId}) formats
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    socket.emit('chat response', 'Please connect with Google to start chatting with Brahma.');
+                    return;
+                }
+
                 let msgText: string;
                 let sessionId: string | undefined;
 
@@ -342,18 +592,17 @@ export class PlaygroundAdapter implements Adapter {
                 this.telemetryMap.set(messageId, []);
                 if (sessionId) this.sessionMap.set(messageId, sessionId);
 
-                // Save user message to session
+                // Save user message to user's chat session
                 if (sessionId) {
                     try {
-                        const session = await ChatSession.findOne({ sessionId });
+                        const session = await ChatSession.findOne({ userId: activeUserId, sessionId });
                         if (session) {
                             session.messages.push({ role: 'user', content: msgText, timestamp: new Date() });
-
-                            // Auto-rename on first user message
-                            if (session.title === 'New Chat' && msgText.trim().length > 0) {
-                                session.title = msgText.trim().substring(0, 40) + (msgText.length > 40 ? '...' : '');
+                            
+                            if (session.messages.filter(m => m.role === 'user').length === 1 && session.title === 'New Chat') {
+                                const cleanTitle = msgText.trim().substring(0, 30);
+                                session.title = cleanTitle.length > 0 ? cleanTitle : 'New Chat';
                             }
-
                             await session.save();
                         }
                     } catch (err) {
@@ -361,45 +610,42 @@ export class PlaygroundAdapter implements Adapter {
                     }
                 }
 
-                // Show typing indicator on the frontend
                 socket.emit('typing', true);
 
                 const normalizedMsg: NormalizedMessage = {
-                    message_id: messageId,
-                    platform: 'playground',
-                    channel_id: sessionId || socket.id,
-                    user_id: socket.id,
+                    user_id: activeUserId,
+                    platform: 'web',
+                    channel_id: sessionId || 'default',
                     content: msgText,
-                    timestamp: new Date()
+                    timestamp: new Date(),
+                    message_id: messageId
                 };
 
                 this.onMessageCallback(normalizedMsg);
             });
-
-            socket.on('disconnect', () => {
-                console.log(`[Playground] User disconnected: ${socket.id}`);
-            });
         });
 
         httpServer.listen(this.port, () => {
-            console.log(`[Playground] Web UI running at http://localhost:${this.port}`);
+            console.log(`[PlaygroundAdapter] Socket.io server running on port ${this.port}`);
         });
     }
 
     private setupTelemetryBus() {
-        const sendTelemetry = (messageId: string, event: string, data: any) => {
+        const sendTelemetry = (messageId: string, event: string, payload: any) => {
+            const socket = this.socketMap.get(messageId);
+            const telemetryLogs = this.telemetryMap.get(messageId) || [];
+            
             const telemetryStep = {
-                id: event + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
                 event,
+                stage: payload.stage,
+                label: payload.label,
                 timestamp: new Date().toISOString(),
-                ...data
+                ...payload
             };
 
-            const steps = this.telemetryMap.get(messageId) || [];
-            steps.push(telemetryStep);
-            this.telemetryMap.set(messageId, steps);
+            telemetryLogs.push(telemetryStep);
+            this.telemetryMap.set(messageId, telemetryLogs);
 
-            const socket = this.socketMap.get(messageId);
             if (socket) {
                 socket.emit('telemetry', telemetryStep);
             }
@@ -485,11 +731,10 @@ export class PlaygroundAdapter implements Adapter {
             socket.emit('chat response', response.content);
             this.socketMap.delete(response.originalMessage.message_id);
 
-            // Save assistant response to session
             const sessionId = this.sessionMap.get(response.originalMessage.message_id);
             if (sessionId) {
                 try {
-                    const session = await ChatSession.findOne({ sessionId });
+                    const session = await ChatSession.findOne({ userId: response.originalMessage.user_id, sessionId });
                     if (session) {
                         session.messages.push({ 
                             role: 'assistant', 
@@ -499,7 +744,6 @@ export class PlaygroundAdapter implements Adapter {
                         });
                         await session.save();
 
-                        // Notify frontend that the session title may have been updated
                         socket.emit('session:updated', { sessionId, title: session.title });
                     }
                 } catch (err) {

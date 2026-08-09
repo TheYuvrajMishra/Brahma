@@ -9,7 +9,6 @@ import { Observer } from './Observer';
 import { Logger } from '../core/Logger';
 import { EventBus, SystemEvents } from '../core/EventBus';
 import { HealthServer } from '../core/HealthServer';
-import { ReflectionEngine } from '../core/ReflectionEngine';
 import { MemoryManager } from '../core/MemoryManager';
 
 export class PipelineOrchestrator {
@@ -79,7 +78,7 @@ export class PipelineOrchestrator {
             });
             EventBus.emit(SystemEvents.ROUTING_COMPLETE, { message, routeResult });
 
-            // 3.1. SCRP Research (Phase 0-2, uses only 1 LLM call)
+            // 3.1. SCRP Research
             EventBus.emit(SystemEvents.RESEARCH_STARTED, { message });
             const researchStartTime = Date.now();
             const researchResult = await Researcher.research(message, routeResult.bucket);
@@ -100,8 +99,6 @@ export class PipelineOrchestrator {
                 if (plan.length > 0) {
                     executionLog = await Executor.execute(plan, message);
                 } else if (researchResult.research_required && researchResult.context_store.entries.length > 0) {
-                    // Researcher already gathered context — Planner had nothing to add.
-                    // Create a synthetic execution log from the research so Composer can synthesize.
                     console.log('[Orchestrator] RESEARCH_ONLY_MODE: Planner returned empty, using research context directly');
                     executionLog = researchResult.context_store.entries.map((entry, i) => ({
                         step: i + 1,
@@ -121,7 +118,7 @@ export class PipelineOrchestrator {
 
             // Append assistant response to moment.md for dialogue context
             try {
-                const momentContent = await MemoryManager.getMoment(message.channel_id);
+                const momentContent = await MemoryManager.getMoment(message.user_id, message.channel_id);
                 const momentData = MemoryManager.parseMoment(momentContent);
                 
                 const cleanReply = response.content.replace(/\s+/g, ' ').trim();
@@ -133,35 +130,23 @@ export class PipelineOrchestrator {
                 }
                 
                 const newMoment = MemoryManager.formatMoment(momentData);
-                await MemoryManager.updateMoment(newMoment, message.channel_id);
+                await MemoryManager.updateMoment(newMoment, message.user_id, message.channel_id);
             } catch (err) {
                 console.error('Failed to append assistant response to moment.md:', err);
             }
 
-            // 4. Emit
-            const emitStartTime = Date.now();
+            // Respond back to adapter
             await adapter.emit(response);
-            Logger.info('Emit', message.message_id, Date.now() - emitStartTime, 'SUCCESS', { platform: message.platform });
+            EventBus.emit(SystemEvents.PIPELINE_COMPLETE, { message, response });
 
-            const totalTime = Date.now() - startTime;
-            Logger.info('Pipeline', message.message_id, totalTime, 'COMPLETE');
-            EventBus.emit(SystemEvents.PIPELINE_COMPLETE, { message, response, totalTime });
-            
-            HealthServer.metrics.messagesProcessed++;
-            
-            // Phase 12: Self-Reflection Loop (Fire and forget)
-            if (routeResult.bucket === 'complex' && executionLog) {
-                ReflectionEngine.evaluateTask(message, executionLog, response.content)
-                    .then(() => ReflectionEngine.runCompressionCycle())
-                    .catch(err => {
-                        Logger.error('Pipeline', message.message_id, `Self-Reflection failed: ${err}`);
-                    });
-            }
-            
-        } catch (error) {
-            Logger.error('Pipeline', message.message_id, error);
-            EventBus.emit(SystemEvents.PIPELINE_ERROR, { message, error });
-            HealthServer.metrics.errors++;
+            Logger.info('Orchestrator', message.message_id, Date.now() - startTime, 'SUCCESS');
+        } catch (error: any) {
+            Logger.error('Orchestrator', message.message_id, error);
+            EventBus.emit(SystemEvents.PIPELINE_ERROR, { message, error: error.message });
+            await adapter.emit({
+                originalMessage: message,
+                content: `An error occurred while processing your request: ${error.message}`
+            });
         }
     }
 }

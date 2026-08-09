@@ -6,9 +6,9 @@ import { Logger } from '../core/Logger';
 export class Observer {
     static async observe(message: NormalizedMessage): Promise<void> {
         const startTime = Date.now();
-        const currentMoment = await MemoryManager.getMoment(message.channel_id);
+        const currentMoment = await MemoryManager.getMoment(message.user_id, message.channel_id);
 
-const systemPrompt = `
+        const systemPrompt = `
 You are the Observer engine for an AI assistant.
 Your job is to read the current memory state and the new message, and analyze the user's latest input.
 Output exactly this JSON schema:
@@ -52,7 +52,6 @@ Return ONLY the raw JSON, with no markdown ticks.
         // Programmatically update the moment
         const momentData = MemoryManager.parseMoment(currentMoment);
         
-        // If parsed is fallback/unknown but we already have a topic/tone, keep them as fallback
         if (parsedTopic === 'Unknown' && momentData.topic !== 'Unknown') {
             parsedTopic = momentData.topic;
         }
@@ -60,28 +59,25 @@ Return ONLY the raw JSON, with no markdown ticks.
             parsedTone = momentData.tone;
         }
 
-        // Clean user message for the history
         const cleanUserMsg = message.content.replace(/\s+/g, ' ').trim();
-        // Truncate user message if it's extremely long to avoid ballooning context
         const truncatedUserMsg = cleanUserMsg.length > 1000 ? cleanUserMsg.substring(0, 1000) + '...' : cleanUserMsg;
         
         momentData.topic = parsedTopic;
         momentData.tone = parsedTone;
         momentData.turns.push(`User: ${truncatedUserMsg}`);
 
-        // Keep at most 20 recent turns for rich short-term context
         while (momentData.turns.length > 20) {
             momentData.turns.shift();
         }
 
         const updatedMoment = MemoryManager.formatMoment(momentData);
-        await MemoryManager.updateMoment(updatedMoment, message.channel_id);
+        await MemoryManager.updateMoment(updatedMoment, message.user_id, message.channel_id);
         
         for (const item of newFacts) {
             if (typeof item === 'string') {
-                await MemoryManager.appendZehnFact(item);
+                await MemoryManager.appendZehnFact(item, undefined, message.user_id);
             } else if (item && item.fact) {
-                await MemoryManager.appendZehnFact(item.fact, item.target_section);
+                await MemoryManager.appendZehnFact(item.fact, item.target_section, message.user_id);
             }
         }
 

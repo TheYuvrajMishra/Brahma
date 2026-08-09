@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { ISkill } from '../types/Skill';
+import { GoogleAuthUtils } from '../core/GoogleAuthUtils';
 
 export class GetEmails implements ISkill {
     name = 'get-emails';
@@ -8,19 +9,10 @@ export class GetEmails implements ISkill {
     async execute(params: any): Promise<string> {
         const maxResults = params.max_results || 5;
         const query = params.query || '';
-
-        if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
-            return 'Failed to retrieve emails: Gmail credentials not configured in .env.';
-        }
+        const userId = params.user_id || params.userId;
 
         try {
-            const oauth2Client = new google.auth.OAuth2(
-                process.env.GMAIL_CLIENT_ID,
-                process.env.GMAIL_CLIENT_SECRET,
-                process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground'
-            );
-
-            oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+            const oauth2Client = await GoogleAuthUtils.getOAuth2ClientForUser(userId);
             const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
             const listResponse = await gmail.users.messages.list({
@@ -69,27 +61,22 @@ export class GetEmails implements ISkill {
     private extractBodyText(payload: any): string {
         if (!payload) return '';
 
-        // Case 1: Direct body data
         if (payload.body?.data) {
             return Buffer.from(payload.body.data, 'base64').toString('utf-8');
         }
 
-        // Case 2: Multipart body
         if (payload.parts) {
             for (const part of payload.parts) {
-                // If it is text/plain, return its body
                 if (part.mimeType === 'text/plain' && part.body?.data) {
                     return Buffer.from(part.body.data, 'base64').toString('utf-8');
                 }
                 
-                // If it is a nested multipart, recurse
                 if (part.parts) {
                     const nested = this.extractBodyText(part);
                     if (nested) return nested;
                 }
             }
             
-            // Fallback to text/html if text/plain was not found
             for (const part of payload.parts) {
                 if (part.mimeType === 'text/html' && part.body?.data) {
                     return Buffer.from(part.body.data, 'base64').toString('utf-8');

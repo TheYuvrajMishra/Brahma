@@ -1,17 +1,9 @@
 import { google } from 'googleapis';
 import { ISkill } from '../types/Skill';
+import { GoogleAuthUtils } from '../core/GoogleAuthUtils';
 
-function getOAuth2Client() {
-    if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
-        throw new Error('Google OAuth credentials not configured in .env (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN).');
-    }
-    const oauth2Client = new google.auth.OAuth2(
-        process.env.GMAIL_CLIENT_ID,
-        process.env.GMAIL_CLIENT_SECRET,
-        process.env.GMAIL_REDIRECT_URI || 'https://developers.google.com/oauthplayground'
-    );
-    oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
-    return oauth2Client;
+async function getOAuth2Client(userId?: string) {
+    return await GoogleAuthUtils.getOAuth2ClientForUser(userId);
 }
 
 function normalizeValues(valuesInput: any): any[][] {
@@ -45,7 +37,7 @@ export class CreateSpreadsheet implements ISkill {
     async execute(params: any): Promise<string> {
         const title = params.title || 'New Spreadsheet';
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.create({
                 requestBody: {
@@ -70,7 +62,7 @@ export class FindSpreadsheet implements ISkill {
     async execute(params: any): Promise<string> {
         const query = params.query || params.title || '';
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const drive = google.drive({ version: 'v3', auth });
             
             // Build query
@@ -114,7 +106,7 @@ export class ReadSpreadsheet implements ISkill {
         }
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId,
@@ -158,7 +150,7 @@ export class WriteSpreadsheet implements ISkill {
         const values = normalizeValues(valuesInput);
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.values.update({
                 spreadsheetId,
@@ -196,7 +188,7 @@ export class AppendSpreadsheet implements ISkill {
         const values = normalizeValues(valuesInput);
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.values.append({
                 spreadsheetId,
@@ -249,7 +241,7 @@ export class BatchUpdateSpreadsheet implements ISkill {
         }
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             await sheets.spreadsheets.batchUpdate({
                 spreadsheetId,
@@ -282,7 +274,7 @@ export class AddCheckboxes implements ISkill {
         }
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             
             // Fetch sheet metadata to resolve sheetId
@@ -394,7 +386,7 @@ export class RemoveCheckboxes implements ISkill {
         }
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
 
             // Fetch sheet metadata to resolve sheetId
@@ -499,7 +491,7 @@ export class ReplaceBanding implements ISkill {
         }
 
         try {
-            const auth = getOAuth2Client();
+            const auth = await getOAuth2Client(params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
 
             // Step 1: Fetch all existing banded ranges on this sheet
