@@ -57,7 +57,7 @@ Brahma features a **multi-tenant architecture** where every user receives their 
 4. **Hunar (Skill Index — Modular)**: Located at `core/hunar.md`. Contains pluggable templates and boundaries for modular capabilities.
 5. **Planner, Executor & Researcher Schemas**: Located at `core/planner.md`, `core/executor.md`, `core/researcher.md`.
 
-> 🔒 **Security Guarantee**: There is strict separation between tenant contexts. No user can read or mutate another user's `core/*` folder, search cache, or chat history.
+> 🔒 **Security Guarantee**: There is strict separation between tenant contexts. No user can read or mutate another user's `core/*` folder or chat history.
 
 ---
 
@@ -66,22 +66,6 @@ Brahma features a **multi-tenant architecture** where every user receives their 
 * **AES-256-GCM Token Encryption**: User Google OAuth tokens (access and refresh tokens) are encrypted at rest in MongoDB using [`CryptoUtils`](file:///H:/Brahma/backend/src/core/CryptoUtils.ts) and are never stored in plaintext on disk or in the database.
 * **Signed Session Cookies**: Sessions are authenticated using HTTP-only HMAC-signed session cookies (`brahma_session`) managed via [`SessionUtils`](file:///H:/Brahma/backend/src/core/SessionUtils.ts).
 * **Decrypted Workspace Tools**: Google integrations ([`GetEmails`](file:///H:/Brahma/backend/src/skills/GetEmails.ts), [`GoogleSheets`](file:///H:/Brahma/backend/src/skills/GoogleSheets.ts), [`SendEmail`](file:///H:/Brahma/backend/src/skills/SendEmail.ts)) dynamically decrypt per-user tokens in memory via [`GoogleAuthUtils`](file:///H:/Brahma/backend/src/core/GoogleAuthUtils.ts).
-
----
-
-## 🎨 UI & UX Features (Playground & Onboarding)
-
-* **Minimalist Dark/White Aesthetic**: Dark theme interface paired with clean, high-contrast white controls and status indicators.
-* **Dynamic Witty Thinking Phrases**: Replaces heavy telemetry boxes with subtle, smooth fading status phrases (`mulling...`, `taking time to think...`, `cookin' something up...`, `deciphering your brilliance...`) while waiting for assistant responses.
-* **Message Action Footers**: Every chat bubble (user and assistant) features a one-click **Copy** button and an **IST Timestamp** (e.g. `11:44 PM IST`).
-* **Live Header Clock**: Real-time IST time display in the playground header.
-* **Account & Brain Reset Control**: Sidebar button ("Reset Brain & Setup") enabling users to wipe all dedicated memory context, chat histories, and search caches to restart onboarding cleanly.
-* **4-Step Onboarding Wizard**:
-  - Step 1: Basic Profile Details (Display Name, Role/Occupation).
-  - Step 2: Contact & Location Details (Location/Timezone, Email/Handle; phone numbers excluded).
-  - Step 3: Profile & Preferences with an integrated **Copyable LLM Extraction Prompt** (100–200 words max, paragraph format) for ChatGPT/Claude.
-  - Step 4: Multiple-Choice Interaction Style (Analytical & Concise, Conversational & Adaptive, Executive Summarizer).
-* **Automated Brain Vault Structuring**: Submitted bio paragraphs are automatically categorized and mapped into `zehn.md` sections (`SEC-01` identity/education, `SEC-03` stack/preferences/dislikes, `SEC-04` work/projects, `SEC-06` routines) without hallucinations.
 
 ---
 
@@ -107,14 +91,14 @@ Contains the core orchestrator, pipeline stages, memory stores, models, and inte
     *   [CryptoUtils](file:///H:/Brahma/backend/src/core/CryptoUtils.ts): AES-256-GCM encryption and decryption.
     *   [SessionUtils](file:///H:/Brahma/backend/src/core/SessionUtils.ts): HMAC-signed session token management.
     *   [GoogleAuthUtils](file:///H:/Brahma/backend/src/core/GoogleAuthUtils.ts): Per-user decrypted OAuth2 client retriever.
-    *   [MemoryManager](file:///H:/Brahma/backend/src/core/MemoryManager.ts): Handles per-user brain provisioning, CRUD memory operations, and section categorization.
-    *   [ContextStoreManager](file:///H:/Brahma/backend/src/core/ContextStoreManager.ts): User-scoped entity search context cache manager.
+    *   [MemoryManager](file:///H:/Brahma/backend/src/core/MemoryManager.ts): Handles per-user brain provisioning and CRUD memory operations.
     *   [ReflectionEngine](file:///H:/Brahma/backend/src/core/ReflectionEngine.ts): Evaluates executor logs and compiles/compresses long-term context per user.
     *   [SkillRegistry](file:///H:/Brahma/backend/src/core/SkillRegistry.ts): Manages hot-loadable capabilities.
     *   [EventBus](file:///H:/Brahma/backend/src/core/EventBus.ts): Internal publish/subscribe event engine.
+    *   [HealthServer](file:///H:/Brahma/backend/src/core/HealthServer.ts): Express-based monitoring and telemetry endpoints.
 *   **Platform Adapters**:
     *   [Adapter](file:///H:/Brahma/backend/src/adapters/Adapter.ts): Base interface contract.
-    *   [PlaygroundAdapter](file:///H:/Brahma/backend/src/adapters/PlaygroundAdapter.ts): Multi-tenant auth endpoints, REST context access, account reset route, and Socket.io handlers.
+    *   [PlaygroundAdapter](file:///H:/Brahma/backend/src/adapters/PlaygroundAdapter.ts): Multi-tenant auth endpoints, REST context access, and Socket.io endpoints.
     *   [DiscordAdapter](file:///H:/Brahma/backend/src/adapters/DiscordAdapter.ts): Integration with Discord channels and commands.
     *   [EmailAdapter](file:///H:/Brahma/backend/src/adapters/EmailAdapter.ts): Connects via SMTP/IMAP to read and reply to emails.
 
@@ -122,12 +106,12 @@ Contains the core orchestrator, pipeline stages, memory stores, models, and inte
 
 ### 🎨 Frontend: [frontend/](file:///H:/Brahma/frontend)
 
-A minimalist browser dashboard built using React, Vite, Framer Motion, and Tailwind CSS:
+A premium browser dashboard built using React, Vite, Framer Motion, and Tailwind CSS:
 
 *   **Pages & Screens**:
-    *   [AuthScreen.tsx](file:///H:/Brahma/frontend/src/pages/AuthScreen.tsx): Dark/white minimalist Google OAuth login landing.
-    *   [OnboardingPage.tsx](file:///H:/Brahma/frontend/src/pages/OnboardingPage.tsx): 4-step minimalist onboarding wizard with copyable LLM prompt box.
-    *   [PlaygroundPage.tsx](file:///H:/Brahma/frontend/src/pages/PlaygroundPage.tsx): Chat interface with live IST header time, witty thinking status phrases, and message copy/timestamp footers.
+    *   [AuthScreen.tsx](file:///H:/Brahma/frontend/src/pages/AuthScreen.tsx): Google OAuth login landing matching the sidebar component style.
+    *   [OnboardingPage.tsx](file:///H:/Brahma/frontend/src/pages/OnboardingPage.tsx): 5-step onboarding flow collecting profile, contact info (excluding phone numbers), preferences, dislikes, and preferred interaction style (Analytical & Concise, Conversational & Adaptive, Executive Summarizer).
+    *   [PlaygroundPage.tsx](file:///H:/Brahma/frontend/src/pages/PlaygroundPage.tsx): Chat interface communicating with Brahma over user-authenticated WebSockets.
     *   [ContextCorePage.tsx](file:///H:/Brahma/frontend/src/pages/ContextCorePage.tsx): View and edit `atman.md`, `zehn.md`, and session context files for the logged-in user.
     *   [AuditTelemetryPage.tsx](file:///H:/Brahma/frontend/src/pages/AuditTelemetryPage.tsx): Real-time event logging, metrics dashboards, and active runs tracing.
 
@@ -175,11 +159,11 @@ Once running:
 
 ## 📐 Non-Negotiable System Principles
 
-*   **Multi-Tenant Isolation**: User data, tokens, search caches, and brain files are strictly partitioned and inaccessible across tenants.
+*   **Multi-Tenant Isolation**: User data, tokens, and brain files are strictly partitioned and inaccessible across tenants.
 *   **Immutable Atman Core**: Base soul guidelines are preserved; user interaction modes are layered cleanly via overrides.
 *   **Stateless Skills**: Skill modules define logic templates and parameters, receiving context dynamically.
 *   **Encrypted Credentials**: Tokens are encrypted at rest with AES-256-GCM.
-*   **Continuous Compression**: Long-term memory (`zehn.md`) is automatically summarized and categorized per user.
+*   **Continuous Compression**: Long-term memory (`zehn.md`) is automatically summarized and compiled per user.
 
 ---
 
@@ -204,7 +188,7 @@ Once running:
 ```
 1.  **Foundation**: Standardize YAML/Markdown schemas, orchestrate echo pipelines, inject Atman context, implement basic routing. (Completed)
 2.  **Intelligence**: Introduce structured `Planner` schemas, sequential/parallel `Executor` threads, core skill integrations, and composition formatting. (Completed)
-3.  **Scale**: Deploy Email, Discord, and Playground UI connections. Multi-tenant user architecture, encrypted OAuth token storage, dynamic onboarding, and minimalist UI controls. (Completed)
+3.  **Scale**: Deploy Email, Discord, and Playground UI connections. Multi-tenant user architecture, encrypted OAuth token storage, dynamic onboarding. (Completed)
 4.  **True Agency**: Establish multi-agent coordination pipelines, autonomous action tracking, and self-improving skill creation loops. (Upcoming)
 
 ---
