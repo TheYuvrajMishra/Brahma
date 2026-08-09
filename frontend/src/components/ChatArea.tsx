@@ -1,17 +1,17 @@
-import React, { type RefObject, useState, useRef } from 'react';
+import React, { type RefObject, useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
     PiListLight, 
     PiArrowUpLight, 
-    PiWifiHighLight, 
-    PiWifiSlashLight,
     PiPaperclipLight,
-    PiSpinnerLight
+    PiSpinnerLight,
+    PiCopyLight,
+    PiCheckLight
 } from 'react-icons/pi';
 import type { Message, TelemetryStep } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
-import { ProcessTelemetryAccordion } from './ProcessTelemetryAccordion';
 import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
 
 interface ChatAreaProps {
@@ -28,13 +28,106 @@ interface ChatAreaProps {
     inputRef: RefObject<HTMLTextAreaElement | null>;
 }
 
+const WITTY_STATUS_PHRASES = [
+    "mulling...",
+    "taking time to think...",
+    "polishing the neurons...",
+    "consulting the digital cosmos...",
+    "staring into the void...",
+    "cookin' something up...",
+    "deciphering your brilliance...",
+    "warming up the brain cells...",
+    "plotting the next move...",
+    "scratching CPU head...",
+    "whispering to the LLM gods...",
+    "assembling digital thoughts...",
+    "brewing a genius response...",
+    "aligning synaptic orbits...",
+    "parsing human magic..."
+];
+
+const formatISTTime = (isoDateStr?: string) => {
+    try {
+        const date = isoDateStr ? new Date(isoDateStr) : new Date();
+        return new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true
+        }).format(date) + ' IST';
+    } catch {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' IST';
+    }
+};
+
+const MessageFooter: React.FC<{ content: string; timestamp?: string; isUser: boolean }> = ({ content, timestamp, isUser }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+        <div className={`flex items-center gap-3 mt-1.5 text-[10px] text-zinc-500 font-mono select-none ${isUser ? 'justify-end' : 'justify-start'}`}>
+            <span>{formatISTTime(timestamp)}</span>
+            <button
+                onClick={handleCopy}
+                className="hover:text-zinc-300 transition-colors flex items-center gap-1 cursor-pointer"
+                title="Copy message"
+            >
+                {copied ? (
+                    <>
+                        <PiCheckLight className="w-3 h-3 text-white" />
+                        <span className="text-white">Copied</span>
+                    </>
+                ) : (
+                    <>
+                        <PiCopyLight className="w-3 h-3" />
+                        <span>Copy</span>
+                    </>
+                )}
+            </button>
+        </div>
+    );
+};
+
+const ThinkingStatus: React.FC = () => {
+    const [index, setIndex] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setIndex(prev => (prev + 1) % WITTY_STATUS_PHRASES.length);
+        }, 1100);
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/10 text-zinc-400 select-none">
+            <div className="w-2 h-2 rounded-full bg-white/70 animate-ping" />
+            <AnimatePresence mode="wait">
+                <motion.span
+                    key={index}
+                    initial={{ opacity: 0, y: 3 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -3 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="font-mono text-xs text-zinc-300 lowercase tracking-wide"
+                >
+                    {WITTY_STATUS_PHRASES[index]}
+                </motion.span>
+            </AnimatePresence>
+        </div>
+    );
+};
+
 export const ChatArea: React.FC<ChatAreaProps> = ({
     sidebarOpen,
     setSidebarOpen,
     connected,
     messages,
     isTyping,
-    currentTelemetry = [],
     inputValue,
     setInputValue,
     handleSubmit,
@@ -96,19 +189,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         }
     };
 
-    React.useEffect(() => {
+    useEffect(() => {
         const textarea = inputRef.current;
         if (!textarea) return;
         
         textarea.style.height = 'auto';
         const scrollHeight = textarea.scrollHeight;
-        // Only set explicit height if the content wraps to multiple lines (scrollHeight > 45px)
         if (scrollHeight > 45) {
             textarea.style.height = `${Math.min(scrollHeight, 120)}px`;
         }
     }, [inputValue, inputRef]);
-
-
 
     return (
         <div className="main-area flex flex-col h-full">
@@ -125,27 +215,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         </button>
                     )}
                     <h1 className="font-display font-semibold tracking-wide text-sm text-white/95">
-                        BRAHMA TELEMETRY
+                        BRAHMA SYSTEM
                     </h1>
                 </div>
                 
-                {/* Connection Badge */}
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono border transition-all duration-500 ${
-                    connected 
-                        ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400' 
-                        : 'bg-rose-500/5 border-rose-500/10 text-rose-400'
-                }`}>
-                    {connected ? (
-                        <>
-                            <PiWifiHighLight className="w-3.5 h-3.5 animate-pulse" />
-                            <span>SYS_ONLINE</span>
-                        </>
-                    ) : (
-                        <>
-                            <PiWifiSlashLight className="w-3.5 h-3.5" />
-                            <span>SYS_OFFLINE</span>
-                        </>
-                    )}
+                {/* Live Plain IST Time */}
+                <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-[10px] font-mono select-none">
+                    {formatISTTime()}
                 </div>
             </div>
 
@@ -157,7 +233,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     style={{ backgroundImage: 'url("/background.png")' }}
                 />
 
-                {/* Full-width Scroll Container so scrollbar sits clean at the viewport edge */}
+                {/* Full-width Scroll Container */}
                 <div className="flex-1 overflow-y-auto px-4 sm:px-8 pt-8 pb-36 flex flex-col relative z-10 w-full">
                     <div className="max-w-5xl w-full mx-auto flex flex-col gap-6">
                         {messages.length === 0 && (
@@ -170,21 +246,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                 className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {msg.role === 'user' ? (
-                                    <div className="max-w-[85%] rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5">
-                                        <p className="whitespace-pre-wrap">{msg.content}</p>
+                                    <div className="flex flex-col items-end max-w-[85%]">
+                                        <div className="rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5 w-full">
+                                            <p className="whitespace-pre-wrap">{msg.content}</p>
+                                        </div>
+                                        <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={true} />
                                     </div>
                                 ) : (
-                                    <div className="flex-1 max-w-[95%] py-0.5 select-text">
-                                        {/* Telemetry Execution Thoughts Accordion */}
-                                        {msg.telemetry && msg.telemetry.length > 0 && (
-                                            <ProcessTelemetryAccordion 
-                                                telemetry={msg.telemetry} 
-                                                isLive={false} 
-                                                defaultExpanded={false}
-                                            />
-                                        )}
-
-                                        <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans">
+                                    <div className="flex-1 max-w-[95%] py-0.5 select-text flex flex-col items-start">
+                                        <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans w-full">
                                             {msg.isNew ? (
                                                 <TypewriterMarkdown 
                                                     content={msg.content} 
@@ -199,6 +269,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                             )}
                                         </div>
+                                        <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={false} />
                                     </div>
                                 )}
                             </div>
@@ -206,26 +277,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         
                         {isTyping && (
                             <div className="flex w-full justify-start items-start">
-                                <div className="flex-1 max-w-[95%]">
-                                    {currentTelemetry && currentTelemetry.length > 0 ? (
-                                        <ProcessTelemetryAccordion 
-                                            telemetry={currentTelemetry} 
-                                            isLive={true} 
-                                            defaultExpanded={true}
-                                        />
-                                    ) : (
-                                        <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-white/[0.02] border border-white/5 text-zinc-400 font-mono text-xs">
-                                            <div className="flex gap-1">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-white/70 animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                                            </div>
-                                            <span className="text-[10px] tracking-wider text-zinc-400 uppercase">
-                                                Initializing Pipeline Telemetry...
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
+                                <ThinkingStatus />
                             </div>
                         )}
                         <div ref={messagesEndRef} />
@@ -253,11 +305,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         {/* Attached file chip indicator */}
                         {attachedFile && (
                             <div className="px-5 pt-2 flex items-center gap-2">
-                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono">
+                                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white text-xs font-mono">
                                     <PiPaperclipLight className="w-3.5 h-3.5" />
                                     <span>{attachedFile.name}</span>
                                     {uploadingFile ? (
-                                        <PiSpinnerLight className="w-3 h-3 animate-spin text-indigo-400" />
+                                        <PiSpinnerLight className="w-3 h-3 animate-spin text-white" />
                                     ) : (
                                         <button 
                                             type="button" 
