@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { 
     PiListLight, 
-    PiWifiHighLight, 
-    PiWifiSlashLight, 
     PiFileTextLight, 
     PiFloppyDiskLight,
     PiSlidersHorizontalLight
@@ -91,23 +89,14 @@ export const ContextCorePage: React.FC = () => {
                     </h1>
                 </div>
                 
-                {/* Connection Badge */}
-                <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-mono border transition-all duration-500 ${
-                    connected 
-                        ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400' 
-                        : 'bg-rose-500/5 border-rose-500/10 text-rose-400'
-                }`}>
-                    {connected ? (
-                        <>
-                            <PiWifiHighLight className="w-3.5 h-3.5 animate-pulse" />
-                            <span>SYS_ONLINE</span>
-                        </>
-                    ) : (
-                        <>
-                            <PiWifiSlashLight className="w-3.5 h-3.5" />
-                            <span>SYS_OFFLINE</span>
-                        </>
-                    )}
+                {/* Live Plain IST Time */}
+                <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-[10px] font-mono select-none">
+                    {new Intl.DateTimeFormat('en-IN', {
+                        timeZone: 'Asia/Kolkata',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hour12: true
+                    }).format(new Date()) + ' IST'}
                 </div>
             </div>
 

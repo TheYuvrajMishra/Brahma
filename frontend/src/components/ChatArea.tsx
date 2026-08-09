@@ -245,14 +245,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                 className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {msg.role === 'user' ? (
-                                    <div className="flex flex-col items-end max-w-[85%]">
+                                    <div className="flex flex-col items-end max-w-[85%] group">
                                         <div className="rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5 w-full">
                                             <p className="whitespace-pre-wrap">{msg.content}</p>
                                         </div>
-                                        <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={true} />
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={true} />
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 max-w-[95%] py-0.5 select-text flex flex-col items-start">
+                                    <div className="flex-1 max-w-[95%] py-0.5 select-text flex flex-col items-start group">
                                         <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans w-full">
                                             {msg.isNew ? (
                                                 <TypewriterMarkdown 
@@ -268,7 +270,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                                             )}
                                         </div>
-                                        <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={false} />
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                            <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={false} />
+                                        </div>
                                     </div>
                                 )}
                             </div>
