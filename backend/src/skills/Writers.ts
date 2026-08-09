@@ -1,6 +1,59 @@
 import { ISkill } from '../types/Skill';
 import { LLMService } from '../services/LLMService';
 
+export function sanitizeEmailText(rawText: string): string {
+    if (!rawText) return '';
+    let cleaned = rawText.trim();
+
+    // 1. Remove XML/HTML thinking tags: <think>...</think>
+    cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // 2. Remove markdown code blocks (e.g. ```text or ```)
+    cleaned = cleaned.replace(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, '$1');
+    cleaned = cleaned.replace(/```[\s\S]*?$/g, '');
+
+    // 3. Remove thinking process headers/blocks
+    if (/^\s*(Here's a thinking process|Thinking Process|Thought Process|1\.\s*\*\*Analyze|Analyze User Input)/i.test(cleaned)) {
+        const salutationMatch = cleaned.match(/\n\s*(?:Hey|Hi|Dear|Hello)\b[\s\S]*/i);
+        if (salutationMatch) {
+            cleaned = salutationMatch[0].trim();
+        } else {
+            const paragraphs = cleaned.split(/\n\s*\n/);
+            const bodyParagraphs = paragraphs.filter(p => 
+                !/^\s*(?:Here's a thinking|Thinking Process|\d+\.\s*\*\*|Checks:|Proceeds|Tone\/Style:|Critical Rules:)/i.test(p.trim())
+            );
+            if (bodyParagraphs.length > 0) {
+                cleaned = bodyParagraphs.join('\n\n').trim();
+            }
+        }
+    }
+
+    // 4. Scan lines from start to find salutation or Subject line
+    const lines = cleaned.split('\n');
+    let contentStartIndex = 0;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (/^(dear|hi|hello|hey)\b/i.test(line)) {
+            contentStartIndex = i;
+            break;
+        }
+        if (/^subject:/i.test(line)) {
+            contentStartIndex = i + 1;
+            break;
+        }
+    }
+    
+    if (contentStartIndex > 0) {
+        cleaned = lines.slice(contentStartIndex).join('\n').trim();
+    }
+
+    // 5. Remove dependency context markers or step outputs if leaked
+    cleaned = cleaned.replace(/--- Output from Step \d+ [\s\S]*?---/g, '');
+    
+    return cleaned.trim();
+}
+
 export class WriteBlog implements ISkill {
     name = 'write-blog';
     description = 'Drafts SEO-optimized blog posts.';
@@ -53,12 +106,13 @@ CRITICAL RULES:
 
 MANDATORY OUTPUT FORMAT:
 Return ONLY the raw email body text.
+- Do NOT output any thinking process, reasoning steps, or analysis headers (e.g., "Here's a thinking process:").
 - Do NOT wrap the output in markdown code blocks (like \`\`\`text).
 - Do NOT include the subject line or "To: / From:" headers in the response.
 - Do NOT include any conversational preamble or postscript (such as "Here is the drafted email:").
         `.trim();
 
         const response = await LLMService.chat(systemPrompt, 'Generate the email body text.');
-        return response || 'Failed to generate email.';
+        return sanitizeEmailText(response || '');
     }
 }
