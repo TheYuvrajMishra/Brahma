@@ -12,6 +12,7 @@ import {
 } from 'react-icons/pi';
 import type { Message, TelemetryStep } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
+import { ProcessTelemetryAccordion } from './ProcessTelemetryAccordion';
 import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
 
 interface ChatAreaProps {
@@ -127,6 +128,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     setSidebarOpen,
     messages,
     isTyping,
+    currentTelemetry = [],
     inputValue,
     setInputValue,
     handleSubmit,
@@ -136,6 +138,31 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [attachedFile, setAttachedFile] = useState<{ name: string; markdown: string } | null>(null);
     const [uploadingFile, setUploadingFile] = useState(false);
+    const [showWittyPhase, setShowWittyPhase] = useState(false);
+
+    // Calculate dynamic witty status duration (1s - 3s based on user message length)
+    useEffect(() => {
+        if (isTyping) {
+            const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+            const msgLen = lastUserMsg?.content?.length || 0;
+
+            let delayMs = 1000;
+            if (msgLen >= 200) {
+                delayMs = 3000;
+            } else if (msgLen >= 50) {
+                delayMs = 2000;
+            }
+
+            setShowWittyPhase(true);
+            const timer = setTimeout(() => {
+                setShowWittyPhase(false);
+            }, delayMs);
+
+            return () => clearTimeout(timer);
+        } else {
+            setShowWittyPhase(false);
+        }
+    }, [isTyping, messages]);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -255,6 +282,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                     </div>
                                 ) : (
                                     <div className="flex-1 max-w-[95%] py-0.5 select-text flex flex-col items-start group">
+                                        {/* Telemetry Execution Thoughts Accordion */}
+                                        {msg.telemetry && msg.telemetry.length > 0 && (
+                                            <ProcessTelemetryAccordion 
+                                                telemetry={msg.telemetry} 
+                                                isLive={false} 
+                                                defaultExpanded={false}
+                                            />
+                                        )}
+
                                         <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans w-full">
                                             {msg.isNew ? (
                                                 <TypewriterMarkdown 
@@ -280,7 +316,17 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         
                         {isTyping && (
                             <div className="flex w-full justify-start items-start">
-                                <ThinkingStatus />
+                                <div className="flex-1 max-w-[95%]">
+                                    {showWittyPhase ? (
+                                        <ThinkingStatus />
+                                    ) : (
+                                        <ProcessTelemetryAccordion 
+                                            telemetry={currentTelemetry} 
+                                            isLive={true} 
+                                            defaultExpanded={true}
+                                        />
+                                    )}
+                                </div>
                             </div>
                         )}
                         <div ref={messagesEndRef} />

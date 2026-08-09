@@ -90,7 +90,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ user, onOnboardi
                 <motion.div 
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10"
+                    className="flex items-center gap-3 px-6 py-4"
                 >
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                     <span className="text-sm font-medium tracking-wide text-white">

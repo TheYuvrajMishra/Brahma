@@ -19,6 +19,7 @@ export const PlaygroundPage: React.FC = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [currentTelemetry, setCurrentTelemetry] = useState<any[]>([]);
     
+    const telemetryRef = useRef<any[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -29,30 +30,35 @@ export const PlaygroundPage: React.FC = () => {
         const handleTyping = (state: boolean) => { 
             setIsTyping(state); 
             if (state) {
+                telemetryRef.current = [];
                 setCurrentTelemetry([]);
             }
         };
 
         const handleTelemetry = (data: any) => {
-            setCurrentTelemetry(prev => [...prev, {
-                id: data.event + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            const stepItem = {
+                id: (data.event || 'step') + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
                 event: data.event,
-                stage: data.stage,
-                label: data.label,
-                timestamp: data.timestamp,
+                stage: data.stage || 'Pipeline Execution',
+                label: data.label || 'Processing stage payload...',
+                timestamp: data.timestamp || new Date().toISOString(),
                 details: data.details || data.plan || data.step || null
-            }]);
+            };
+            telemetryRef.current = [...telemetryRef.current, stepItem];
+            setCurrentTelemetry(telemetryRef.current);
         };
 
         const handleChatResponse = (msg: string) => {
+            const finalTelemetry = [...telemetryRef.current];
             setMessages(prev => [...prev, { 
                 role: 'assistant', 
                 content: msg, 
                 timestamp: new Date().toISOString(), 
                 isNew: true,
-                telemetry: currentTelemetry.length > 0 ? [...currentTelemetry] : undefined
+                telemetry: finalTelemetry.length > 0 ? finalTelemetry : undefined
             }]);
             setCurrentTelemetry([]);
+            telemetryRef.current = [];
         };
 
         socket.on('typing', handleTyping);
@@ -64,7 +70,7 @@ export const PlaygroundPage: React.FC = () => {
             socket.off('telemetry', handleTelemetry);
             socket.off('chat response', handleChatResponse);
         };
-    }, [socket, currentTelemetry]);
+    }, [socket]);
 
     // ── Load messages when active session changes ─────────────────────
     useEffect(() => {
