@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import mongoose from 'mongoose';
 import { User } from '../models/User';
 import { CryptoUtils } from './CryptoUtils';
 
@@ -15,7 +16,14 @@ export class GoogleAuthUtils {
         const oauth2Client = new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 
         if (userId) {
-            const user = await User.findById(userId);
+            let user = null;
+            if (mongoose.Types.ObjectId.isValid(userId)) {
+                user = await User.findById(userId);
+            }
+            if (!user) {
+                user = await User.findOne({ $or: [{ googleId: userId }, { email: userId }] });
+            }
+
             if (user && user.encryptedRefreshToken && user.refreshTokenIv && user.refreshTokenTag) {
                 const refreshToken = CryptoUtils.decrypt({
                     encrypted: user.encryptedRefreshToken,

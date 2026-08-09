@@ -37,7 +37,7 @@ export class CreateSpreadsheet implements ISkill {
     async execute(params: any): Promise<string> {
         const title = params.title || 'New Spreadsheet';
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.create({
                 requestBody: {
@@ -62,7 +62,7 @@ export class FindSpreadsheet implements ISkill {
     async execute(params: any): Promise<string> {
         const query = params.query || params.title || '';
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const drive = google.drive({ version: 'v3', auth });
             
             // Build query
@@ -106,7 +106,7 @@ export class ReadSpreadsheet implements ISkill {
         }
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId,
@@ -150,7 +150,7 @@ export class WriteSpreadsheet implements ISkill {
         const values = normalizeValues(valuesInput);
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.values.update({
                 spreadsheetId,
@@ -188,7 +188,7 @@ export class AppendSpreadsheet implements ISkill {
         const values = normalizeValues(valuesInput);
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             const response = await sheets.spreadsheets.values.append({
                 spreadsheetId,
@@ -241,7 +241,7 @@ export class BatchUpdateSpreadsheet implements ISkill {
         }
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             await sheets.spreadsheets.batchUpdate({
                 spreadsheetId,
@@ -274,7 +274,7 @@ export class AddCheckboxes implements ISkill {
         }
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
             
             // Fetch sheet metadata to resolve sheetId
@@ -386,7 +386,7 @@ export class RemoveCheckboxes implements ISkill {
         }
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
 
             // Fetch sheet metadata to resolve sheetId
@@ -491,7 +491,7 @@ export class ReplaceBanding implements ISkill {
         }
 
         try {
-            const auth = await getOAuth2Client(params?.user_id || params?.userId);
+            const auth = await getOAuth2Client(params?._user_id || params?.user_id || params?.userId);
             const sheets = google.sheets({ version: 'v4', auth });
 
             // Step 1: Fetch all existing banded ranges on this sheet

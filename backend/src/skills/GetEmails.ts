@@ -9,7 +9,7 @@ export class GetEmails implements ISkill {
     async execute(params: any): Promise<string> {
         const maxResults = params.max_results || 5;
         const query = params.query || '';
-        const userId = params.user_id || params.userId;
+        const userId = params._user_id || params.user_id || params.userId;
 
         try {
             const oauth2Client = await GoogleAuthUtils.getOAuth2ClientForUser(userId);

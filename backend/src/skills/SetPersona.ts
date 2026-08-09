@@ -12,7 +12,7 @@ export class SetPersona implements ISkill {
     async execute(params: any): Promise<string> {
         const personaDescription = params.persona_description || '';
         const channelId = params._channel_id || '';
-        const userId = params.user_id || params.userId;
+        const userId = params._user_id || params.user_id || params.userId;
 
         if (!channelId) {
             return 'Failed to set persona: No active channel or session ID context detected.';
@@ -41,7 +41,7 @@ ${defaultSoul}
 Generate a customized, channel-specific persona profile that blends this base persona with the style, tone, catchphrases, and identity of: "${personaDescription}".
 Keep the same markdown structure (Identity, Personality Traits, Communication Style, Ethical Boundaries, Language Preferences) but adapt the Identity details, Personality Traits, and Communication Style to match the requested persona.
 Ensure it remains professional and respectful, but distinctively in-character (e.g. incorporating iconic phrasing or style cues).
-Output ONLY the final markdown. Do not include markdown code fence ticks (e.g. \`\`\`) or introductory/explanatory text.
+Output ONLY the final markdown. Do not include markdown code fence ticks (e.g. \`\`\`) or any introductory/explanatory text.
             `.trim();
 
             const customPersonaMarkdown = await LLMService.chat(prompt, `Generate customized persona for: ${personaDescription}`);

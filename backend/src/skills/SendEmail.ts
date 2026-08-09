@@ -10,7 +10,7 @@ export class SendEmail implements ISkill {
         const recipient = params.recipient;
         const subject = params.subject || 'No Subject';
         let body = params.body || '';
-        const userId = params.user_id || params.userId;
+        const userId = params._user_id || params.user_id || params.userId;
         
         body = this.sanitizeEmailBody(body);
 

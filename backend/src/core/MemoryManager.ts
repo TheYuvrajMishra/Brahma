@@ -356,55 +356,55 @@ ${renumberedTurns}`.trim();
         this.ensureUserBrain(userId);
         const brainPath = this.getUserBrainPath(userId);
 
-        // 1. Update Zehn (Long-Term Memory)
-        let zehnContent = await this.getZehn(userId);
-
-        const profileFacts = [
-            `- **Full / Display Name**: ${data.displayName || 'User'}`,
-            `- **Role / Occupation**: ${data.role || 'Not specified'}`,
-            `- **Location / Timezone**: ${data.location || 'Not specified'}`,
-            `- **Preferred Contact / Handle**: ${data.preferredHandle || 'Not specified'}`
-        ].join('\n');
-
         const styleLabel = data.interactionStyle === 'analytical'
             ? 'Analytical & Concise (direct, code-first, data-dense responses)'
             : data.interactionStyle === 'executive'
                 ? 'Executive Summarizer (high-level bullet points, action items)'
                 : 'Conversational & Adaptive (collaborative, detailed explanations with Hinglish/tone warmth)';
 
-        const prefFacts = [
-            `- **Preferred Interaction Style**: ${styleLabel}`,
-            `- **Preferences & Tools**: ${data.preferences || 'None specified'}`,
-            `- **Dislikes & Things to Avoid**: ${data.dislikes || 'None specified'}`
-        ].join('\n');
+        const zehnContent = `# Zehn: Long-Term Memory Index & Knowledge Vault
 
-        // Inject into SEC-01 & SEC-03 in zehn.md
-        if (zehnContent.includes('## [SEC-01] User Identity & Core Profile')) {
-            const parts = zehnContent.split('## [SEC-01] User Identity & Core Profile');
-            const header = parts[0] + '## [SEC-01] User Identity & Core Profile\n';
-            const rest = parts[1];
-            const nextIdx = rest.indexOf('\n## ');
-            const remaining = nextIdx !== -1 ? rest.substring(nextIdx) : '';
-            zehnContent = header + profileFacts + '\n' + remaining;
-        } else {
-            zehnContent += `\n\n## [SEC-01] User Identity & Core Profile\n${profileFacts}`;
-        }
+## Index & Routing Table
+- [SEC-01] User Identity & Core Profile
+- [SEC-02] People & Relationships
+- [SEC-03] Persona & Communication Preferences
+- [SEC-04] Work, Career & Projects
+- [SEC-05] Contact Information & Channels
+- [SEC-06] Health, Habits & Routines
+- [SEC-07] System & Technical Config
 
-        if (zehnContent.includes('## [SEC-03] Persona & Communication Preferences')) {
-            const parts = zehnContent.split('## [SEC-03] Persona & Communication Preferences');
-            const header = parts[0] + '## [SEC-03] Persona & Communication Preferences\n';
-            const rest = parts[1];
-            const nextIdx = rest.indexOf('\n## ');
-            const remaining = nextIdx !== -1 ? rest.substring(nextIdx) : '';
-            zehnContent = header + prefFacts + '\n' + remaining;
-        } else {
-            zehnContent += `\n\n## [SEC-03] Persona & Communication Preferences\n${prefFacts}`;
-        }
+## [SEC-01] User Identity & Core Profile
+- **Full / Display Name**: ${data.displayName || 'User'}
+- **Role / Occupation**: ${data.role || 'Not specified'}
+- **Location / Timezone**: ${data.location || 'Not specified'}
+- **Preferred Contact / Handle**: ${data.preferredHandle || 'Not specified'}
+
+## [SEC-02] People & Relationships
+- None recorded yet.
+
+## [SEC-03] Persona & Communication Preferences
+- **Preferred Interaction Style**: ${styleLabel}
+- **Preferences & Tools**: ${data.preferences || 'None specified'}
+- **Dislikes & Things to Avoid**: ${data.dislikes || 'None specified'}
+
+## [SEC-04] Work, Career & Projects
+- **Current Position**: ${data.role || 'Not specified'}
+
+## [SEC-05] Contact Information & Channels
+- **Email**: ${data.preferredHandle || 'Not specified'}
+
+## [SEC-06] Health, Habits & Routines
+- None recorded yet.
+
+## [SEC-07] System & Technical Config
+- **Preferred UI Mode**: Dark mode
+- **Brahma System Core**: Thinker-executor-observer; persistent digital consciousness; calm, direct, analytical.
+`;
 
         await fs.promises.writeFile(path.join(brainPath, 'zehn.md'), zehnContent, 'utf-8');
 
-        // 2. Customize Atman (Soul persona guidelines) based on preferred interaction style
-        let atmanContent = await this.getSoul(userId);
+        // Customize Atman (Soul persona guidelines) based on preferred interaction style
+        let atmanContent = await fs.promises.readFile(path.join(config.brainPath, 'atman.md'), 'utf-8');
         let styleOverride = '';
         if (data.interactionStyle === 'analytical') {
             styleOverride = '\n\n## User Interaction Mode Override\n- **Style**: Analytical & Concise. Focus on code-first, data-dense, direct answers without unnecessary filler.';
