@@ -31,6 +31,7 @@ export class Researcher {
 
     static async research(message: NormalizedMessage, routeBucket: string): Promise<ResearchResult> {
         const startTime = Date.now();
+        const userId = message.user_id;
 
         try {
             // ── Phase 0: Intent Parsing (1 LLM call) ────────────────────
@@ -42,7 +43,7 @@ export class Researcher {
                 console.log(`[Researcher] SKIPPED: no flagged entities or greeting`);
                 const moment = await MemoryManager.getMoment(message.user_id, message.channel_id);
                 const searchText = (message.content + ' ' + moment).toLowerCase();
-                const relevantCachedEntries = ContextStoreManager.getAll().filter(entry => 
+                const relevantCachedEntries = ContextStoreManager.getAll(userId).filter(entry => 
                     searchText.includes(entry.entity_name.toLowerCase())
                 );
                 return {
@@ -56,11 +57,11 @@ export class Researcher {
 
             // ── Phase 1: Build search queue ──────────────────────────────
             const depth = DEPTH_MAP[parsedIntent.request_type] || 'standard';
-            const searchQueue = this.buildSearchQueue(parsedIntent, depth);
+            const searchQueue = this.buildSearchQueue(parsedIntent, depth, userId);
             console.log(`[Researcher] Phase 1: depth=${depth}, queue=[${searchQueue.map(t => t.target)}]`);
 
             // ── Phase 2: Execute searches (no LLM calls) ────────────────
-            const contextStore = await this.executeResearch(searchQueue, parsedIntent, depth, message.message_id);
+            const contextStore = await this.executeResearch(searchQueue, parsedIntent, depth, message.message_id, userId);
             console.log(`[Researcher] Phase 2: entries=${contextStore.entries.length}, searches=${contextStore.total_searches_executed}, gaps=${contextStore.gaps.length}`);
 
             return {
@@ -128,12 +129,12 @@ Respond ONLY with a valid JSON object (no markdown, no backticks):
         return defaultParsedIntent;
     }
 
-    private static buildSearchQueue(parsedIntent: ParsedIntent, depth: 'minimum' | 'standard'): SearchTask[] {
+    private static buildSearchQueue(parsedIntent: ParsedIntent, depth: 'minimum' | 'standard', userId: string): SearchTask[] {
         const maxTasks = DEPTH_LIMITS[depth] || 1;
         const queue: SearchTask[] = [];
 
         for (const entity of parsedIntent.flagged_entities.slice(0, maxTasks)) {
-            const cached = ContextStoreManager.get(entity);
+            const cached = ContextStoreManager.get(entity, userId);
             if (cached) {
                 console.log(`[Researcher] Context cache HIT for entity: ${entity}`);
                 continue;
@@ -157,14 +158,15 @@ Respond ONLY with a valid JSON object (no markdown, no backticks):
         queue: SearchTask[],
         parsedIntent: ParsedIntent,
         depth: 'minimum' | 'standard',
-        messageId: string
+        messageId: string,
+        userId: string
     ): Promise<ContextStore> {
         const entries: ContextEntry[] = [];
         const gaps: string[] = [];
         let totalSearches = 0;
 
         for (const task of queue) {
-            const cached = ContextStoreManager.get(task.target);
+            const cached = ContextStoreManager.get(task.target, userId);
             if (cached) {
                 entries.push(cached);
                 continue;
@@ -187,7 +189,7 @@ Respond ONLY with a valid JSON object (no markdown, no backticks):
                     researched_at: Date.now()
                 };
 
-                ContextStoreManager.set(task.target, entry);
+                ContextStoreManager.set(task.target, entry, userId);
                 entries.push(entry);
             } catch (err: any) {
                 console.error(`[Researcher] Search failed for ${task.target}:`, err);
