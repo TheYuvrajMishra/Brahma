@@ -37,7 +37,7 @@
 
 - **Note**: Shourya Goenka is a co-founder of NXT company
 - **Note**: User is co‑founder and CTO of Foontro
-## [SEC-05] Contact Information & Channels
+## [SEC-05] Contact Information & Channels 
 - **Email**: yuvraj17mishra11@gmail.com  
 - **Phone**: +91-7003424948  
 - **Socials**: LinkedIn (linkedin.com/in/the-yuvraj-mishra), GitHub (github.com/TheYuvrajMishra), Website (yuvrajmishra.online).  
