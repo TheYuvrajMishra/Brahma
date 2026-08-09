@@ -21,6 +21,10 @@ jobs:
           script: |
             cd Brahma
             git pull origin main || git pull origin master
+            if [ ! -f backend/.env ]; then
+              echo "Creating fallback backend/.env file on VPS..."
+              touch backend/.env
+            fi
             docker compose down || docker-compose down
-            docker compose up --build -d || docker-compose up --build -d
+            docker compose up --build -d || docker-compose up --build -d || { echo "Docker Compose Up Failed! Printing logs..."; docker compose logs --tail=100 || docker-compose logs --tail=100; exit 1; }
             docker image prune -f

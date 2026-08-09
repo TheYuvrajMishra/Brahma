@@ -25,7 +25,8 @@ export class MemoryManager {
         if (!userId) {
             return config.brainPath;
         }
-        const userBrainPath = path.resolve(__dirname, '../../brahma [brain]/users', userId, 'core');
+        const usersRoot = path.resolve(config.brainPath, '../../users');
+        const userBrainPath = path.join(usersRoot, userId, 'core');
         this.ensureUserBrain(userId, userBrainPath);
         return userBrainPath;
     }
@@ -34,7 +35,8 @@ export class MemoryManager {
      * Copies default core brain templates to user dedicated core directory if it doesn't exist yet.
      */
     static ensureUserBrain(userId: string, targetPath?: string): void {
-        const userBrainPath = targetPath || path.resolve(__dirname, '../../brahma [brain]/users', userId, 'core');
+        const usersRoot = path.resolve(config.brainPath, '../../users');
+        const userBrainPath = targetPath || path.join(usersRoot, userId, 'core');
         if (!fs.existsSync(userBrainPath)) {
             fs.mkdirSync(userBrainPath, { recursive: true });
             const templatePath = config.brainPath; // ./brahma [brain]/core

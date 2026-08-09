@@ -13,7 +13,7 @@
     "tool:verify": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tools/verifyDiscord.ts",
     "tool:check": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tools/checkDb.ts",
     "build": "tsc",
-    "start": "nodemon index.ts",
+    "start": "node dist/index.js",
     "dev": "nodemon index.ts"
   },
   "dependencies": {
