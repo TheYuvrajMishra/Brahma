@@ -362,6 +362,9 @@ ${renumberedTurns}`.trim();
                 ? 'Executive Summarizer (high-level bullet points, action items)'
                 : 'Conversational & Adaptive (collaborative, detailed explanations with Hinglish/tone warmth)';
 
+        const prefText = data.preferences ? data.preferences.trim() : 'None specified';
+        const dislikeText = data.dislikes ? data.dislikes.trim() : '';
+
         const zehnContent = `# Zehn: Long-Term Memory Index & Knowledge Vault
 
 ## Index & Routing Table
@@ -384,8 +387,8 @@ ${renumberedTurns}`.trim();
 
 ## [SEC-03] Persona & Communication Preferences
 - **Preferred Interaction Style**: ${styleLabel}
-- **Preferences & Tools**: ${data.preferences || 'None specified'}
-- **Dislikes & Things to Avoid**: ${data.dislikes || 'None specified'}
+- **Preferences, Stack & Work Profile**:
+${prefText}${dislikeText ? `\n- **Dislikes & Things to Avoid**:\n${dislikeText}` : ''}
 
 ## [SEC-04] Work, Career & Projects
 - **Current Position**: ${data.role || 'Not specified'}
