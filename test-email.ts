@@ -1,9 +1,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, 'backend/.env') });
-
 import { SendEmail } from './backend/src/skills/SendEmail';
-
 async function test() {
     const sender = new SendEmail();
     console.log('Sending test email...');
@@ -14,5 +12,4 @@ async function test() {
     });
     console.log('Result:', result);
 }
-
 test();
