@@ -53,14 +53,21 @@ export class WebSearch implements ISkill {
         for (let i = 0; i < linksToVisit.length; i++) {
             const item = linksToVisit[i];
             
-            // Emit live progress with favicon & URL to frontend UI
+            const linkMatrix = linksToVisit.map((l, idx) => ({
+                url: l.url,
+                title: l.title,
+                domain: l.domain,
+                favicon: l.favicon,
+                status: idx === i ? 'visiting' : idx < i ? 'completed' : 'pending'
+            }));
+
             this.emitTelemetry(messageId, {
                 stage: 'Deep Web Research',
-                label: `Visiting article (${i + 1}/${linksToVisit.length}): ${item.domain}`,
-                url: item.url,
+                label: `Analyzing web source (${i + 1}/${linksToVisit.length})`,
+                activeUrl: item.url,
                 domain: item.domain,
                 favicon: item.favicon,
-                details: { title: item.title, snippet: item.snippet }
+                links: linkMatrix
             });
 
             const cleanedText = await this.fetchAndCleanPageContent(item.url);
@@ -77,8 +84,19 @@ export class WebSearch implements ISkill {
             }
         }
 
+        this.emitTelemetry(messageId, {
+            stage: 'Deep Web Research',
+            label: `Web research complete (${visitedArticles.length} sources parsed)`,
+            links: linksToVisit.map(l => ({
+                url: l.url,
+                title: l.title,
+                domain: l.domain,
+                favicon: l.favicon,
+                status: 'completed'
+            }))
+        });
+
         if (visitedArticles.length === 0) {
-            // Fallback to initial search snippets if all link fetches failed
             return `Search results for "${query}":\n\n` + searchResults.slice(0, 5).map((r, i) => 
                 `[${i + 1}] ${r.title} (${r.domain})\nURL: ${r.url}\n${r.snippet}`
             ).join('\n\n');
