@@ -210,37 +210,37 @@ const MarkdownCode: React.FC<React.HTMLAttributes<HTMLElement> & { inline?: bool
 
 export const markdownComponents: Components = {
     h1: ({ children }) => (
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mt-7 mb-3.5 font-display tracking-tight leading-snug border-b border-white/10 pb-2">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-white mt-8 mb-4 font-display tracking-tight leading-tight border-b border-white/15 pb-3">
             {children}
         </h1>
     ),
     h2: ({ children }) => (
-        <h2 className="text-xl sm:text-2xl font-semibold text-white/95 mt-6 mb-3 font-display tracking-tight leading-snug">
+        <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 mt-7 mb-3.5 font-display tracking-tight leading-snug border-b border-white/10 pb-2">
             {children}
         </h2>
     ),
     h3: ({ children }) => (
-        <h3 className="text-lg sm:text-xl font-semibold text-zinc-100 mt-5 mb-2.5 font-display leading-snug">
+        <h3 className="text-xl sm:text-2xl font-semibold text-zinc-100 mt-6 mb-3 font-display tracking-tight leading-snug">
             {children}
         </h3>
     ),
     h4: ({ children }) => (
-        <h4 className="text-base font-semibold text-zinc-200 mt-4 mb-2 font-sans">
+        <h4 className="text-lg sm:text-xl font-semibold text-zinc-200 mt-5 mb-2.5 font-sans leading-snug">
             {children}
         </h4>
     ),
     h5: ({ children }) => (
-        <h5 className="text-sm font-semibold text-zinc-300 mt-3 mb-1.5 font-sans">
+        <h5 className="text-base sm:text-lg font-medium text-zinc-300 mt-4 mb-2 font-sans">
             {children}
         </h5>
     ),
     h6: ({ children }) => (
-        <h6 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mt-3 mb-1 font-mono">
+        <h6 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mt-4 mb-1.5 font-mono">
             {children}
         </h6>
     ),
     hr: () => (
-        <hr className="my-7 border-0 border-t border-white/15" />
+        <hr className="my-8 border-0 border-t border-white/15" />
     ),
     table: MarkdownTable,
     pre: MarkdownPre,
