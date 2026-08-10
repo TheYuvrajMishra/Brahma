@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
 
-import { ReadSpreadsheet, WriteSpreadsheet, AddCheckboxes } from './src/skills/GoogleSheets';
-import { LLMService } from './src/services/LLMService';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+import { ReadSpreadsheet, WriteSpreadsheet, AddCheckboxes } from '../src/skills/GoogleSheets';
+import { LLMService } from '../src/services/LLMService';
 
 async function main() {
     const spreadsheetId = '1prEGiZkT-BD2KhEEU_ECMlYkT8KLEfhbXvkr0cYz-7E';

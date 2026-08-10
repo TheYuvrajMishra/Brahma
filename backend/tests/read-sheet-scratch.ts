@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
 
-import { ReadSpreadsheet } from './src/skills/GoogleSheets';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+import { ReadSpreadsheet } from '../src/skills/GoogleSheets';
 
 async function main() {
     const readSkill = new ReadSpreadsheet();

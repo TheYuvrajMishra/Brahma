@@ -1,6 +1,8 @@
-import { SendEmail } from './src/skills/SendEmail';
+import { SendEmail } from '../src/skills/SendEmail';
 import * as dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function run() {
     const skill = new SendEmail();
@@ -11,4 +13,5 @@ async function run() {
     });
     console.log(result);
 }
+
 run();

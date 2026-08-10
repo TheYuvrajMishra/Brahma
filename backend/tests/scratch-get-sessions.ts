@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
-import { ChatSession } from './src/models/ChatSession';
-import { SessionContext } from './src/models/SessionContext';
+import { ChatSession } from '../src/models/ChatSession';
+import { SessionContext } from '../src/models/SessionContext';
 import * as dotenv from 'dotenv';
+import path from 'path';
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function run() {
     const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/brahma';

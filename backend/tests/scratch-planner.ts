@@ -1,15 +1,17 @@
-import { Planner } from './src/pipeline/Planner';
-import { LLMService } from './src/services/LLMService';
-import { MemoryManager } from './src/core/MemoryManager';
+import { Planner } from '../src/pipeline/Planner';
+import { LLMService } from '../src/services/LLMService';
+import { MemoryManager } from '../src/core/MemoryManager';
 import * as dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function run() {
     console.log("Mocking MemoryManager...");
-    MemoryManager.getPlannerSchema = async () => require('fs').readFileSync('./brahma [brain]/core/planner.md', 'utf-8');
-    MemoryManager.getHunar = async () => require('fs').readFileSync('./brahma [brain]/core/hunar.md', 'utf-8');
-    MemoryManager.getMoment = async () => require('fs').readFileSync('./brahma [brain]/core/moment.md', 'utf-8');
-    MemoryManager.getZehn = async () => require('fs').readFileSync('./brahma [brain]/core/zehn.md', 'utf-8');
+    MemoryManager.getPlannerSchema = async () => require('fs').readFileSync(path.resolve(__dirname, '../brahma [brain]/core/planner.md'), 'utf-8');
+    MemoryManager.getHunar = async () => require('fs').readFileSync(path.resolve(__dirname, '../brahma [brain]/core/hunar.md'), 'utf-8');
+    MemoryManager.getMoment = async () => require('fs').readFileSync(path.resolve(__dirname, '../brahma [brain]/core/moment.md'), 'utf-8');
+    MemoryManager.getZehn = async () => require('fs').readFileSync(path.resolve(__dirname, '../brahma [brain]/core/zehn.md'), 'utf-8');
 
     // intercept LLMService.chat to print raw output
     const originalChat = LLMService.chat;
@@ -42,4 +44,5 @@ async function run() {
         console.error(e);
     }
 }
+
 run();

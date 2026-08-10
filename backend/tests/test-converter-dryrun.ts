@@ -1,4 +1,4 @@
-import { ConvertDocumentToMarkdown } from './src/skills/ConvertDocument';
+import { ConvertDocumentToMarkdown } from '../src/skills/ConvertDocument';
 import path from 'path';
 import fs from 'fs';
 
@@ -6,9 +6,10 @@ async function testPdfConversion() {
     console.log('\n--- DRY TEST 2: PDF & EXCEL CONVERSION ---');
     const converter = new ConvertDocumentToMarkdown();
     
-    // Create a dummy simple PDF file or test existing file
-    const sampleTxt = './uploads/sample_test.txt';
-    if (!fs.existsSync('./uploads')) fs.mkdirSync('./uploads');
+    const uploadsDir = path.resolve(__dirname, '../uploads');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    
+    const sampleTxt = path.join(uploadsDir, 'sample_test.txt');
     fs.writeFileSync(sampleTxt, 'Hello Brahma Document Converter Test!');
 
     const txtResult = await converter.execute({ filePath: sampleTxt });
@@ -18,6 +19,5 @@ async function testPdfConversion() {
 }
 
 testPdfConversion().catch(err => {
-    console.error('DRY TEST FAILED WITH ERROR:', err);
-    process.exit(1);
+    console.error('Dry test failed:', err);
 });

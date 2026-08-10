@@ -1,7 +1,9 @@
-import { Composer } from './src/pipeline/Composer';
-import { LLMService } from './src/services/LLMService';
+import { Composer } from '../src/pipeline/Composer';
+import { LLMService } from '../src/services/LLMService';
 import * as dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function run() {
     // intercept LLMService.chat to print raw output
@@ -48,4 +50,5 @@ async function run() {
     console.log("=== FINAL RESPONSE ===");
     console.log(result.content);
 }
+
 run();

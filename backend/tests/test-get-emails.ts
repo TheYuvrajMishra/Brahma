@@ -1,6 +1,8 @@
-import { GetEmails } from './src/skills/GetEmails';
+import { GetEmails } from '../src/skills/GetEmails';
 import * as dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 async function run() {
     const skill = new GetEmails();
@@ -10,4 +12,5 @@ async function run() {
     console.log('--- TEST RESULTS ---');
     console.log(result);
 }
+
 run();

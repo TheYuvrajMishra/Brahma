@@ -1,4 +1,4 @@
-import { ReflectionEngine } from './src/core/ReflectionEngine';
+import { ReflectionEngine } from '../src/core/ReflectionEngine';
 
 async function test() {
     await ReflectionEngine.runCompressionCycle();

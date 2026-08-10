@@ -1,7 +1,9 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
 
-import { CreateSpreadsheet, FindSpreadsheet, WriteSpreadsheet, ReadSpreadsheet } from './src/skills/GoogleSheets';
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+import { CreateSpreadsheet, FindSpreadsheet, WriteSpreadsheet, ReadSpreadsheet } from '../src/skills/GoogleSheets';
 
 async function runTest() {
     console.log('--- Testing Google Sheets Skills Integration ---');
