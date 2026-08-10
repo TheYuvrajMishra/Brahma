@@ -105,8 +105,7 @@ const ThinkingStatus: React.FC = () => {
     }, []);
 
     return (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.03] border border-white/10 text-zinc-400 select-none">
-            <div className="w-2 h-2 rounded-full bg-white/70 animate-ping" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-zinc-400 select-none">
             <AnimatePresence mode="wait">
                 <motion.span
                     key={index}
