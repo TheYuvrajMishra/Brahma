@@ -73,24 +73,29 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
     };
 
     return (
-        <div className="relative my-5 rounded-xl border border-white/15 bg-zinc-950/60 overflow-hidden group">
-            {/* Minimalist Floating Copy Dropdown at top right */}
-            <div className="absolute top-2.5 right-2.5 z-20" ref={dropdownRef}>
+        <div className="relative my-4 group overflow-x-auto">
+            {/* Top Right Floating Copy Dropdown (Visible on hover) */}
+            <div
+                ref={dropdownRef}
+                className={`absolute top-2 right-2 z-20 transition-opacity duration-200 ${
+                    dropdownOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+            >
                 <button
                     type="button"
                     onClick={() => setDropdownOpen(prev => !prev)}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-zinc-300 hover:text-white transition-all cursor-pointer text-xs shadow-md backdrop-blur-md opacity-80 group-hover:opacity-100"
-                    title="Copy Table"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-zinc-300 hover:text-white transition-all cursor-pointer text-xs shadow-xl backdrop-blur-md"
+                    title="Copy table data"
                 >
                     {copiedFormat ? (
                         <>
                             <PiCheckLight className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400 font-medium">Copied {copiedFormat.toUpperCase()}</span>
+                            <span className="text-emerald-400 font-medium text-[11px]">{copiedFormat.toUpperCase()} Copied</span>
                         </>
                     ) : (
                         <>
-                            <PiCopyLight className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>Copy</span>
+                            <PiCopyLight className="w-3.5 h-3.5 text-zinc-300" />
+                            <span className="text-[11px] font-medium">Copy</span>
                             <PiCaretDownLight className="w-3 h-3 text-zinc-400" />
                         </>
                     )}
@@ -103,7 +108,7 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -4, scale: 0.95 }}
                             transition={{ duration: 0.12 }}
-                            className="absolute right-0 mt-1.5 w-36 py-1 bg-zinc-900/95 border border-white/15 rounded-lg shadow-2xl backdrop-blur-md z-30 font-sans"
+                            className="absolute right-0 mt-1.5 w-36 py-1 bg-zinc-900 border border-white/15 rounded-lg shadow-2xl backdrop-blur-md z-30 font-sans"
                         >
                             <button
                                 type="button"
@@ -126,19 +131,29 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
                 </AnimatePresence>
             </div>
 
-            {/* Table Content */}
-            <div className="overflow-x-auto p-1">
-                <table ref={tableRef} {...props} className="w-full text-left border-collapse text-xs text-zinc-200">
-                    {children}
-                </table>
-            </div>
+            {/* Clean Open Table (No surrounding box container) */}
+            <table ref={tableRef} {...props} className="w-full text-left border-collapse text-xs text-zinc-200">
+                {children}
+            </table>
         </div>
     );
 };
 
 const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
     const [copied, setCopied] = useState(false);
-    const rawCode = extractText(children).replace(/\n$/, '');
+    
+    // Extract raw code text
+    const childArray = React.Children.toArray(children);
+    let rawCode = '';
+
+    if (childArray.length > 0 && React.isValidElement(childArray[0])) {
+        const codeElement = childArray[0] as React.ReactElement<any>;
+        rawCode = extractText(codeElement.props?.children);
+    } else {
+        rawCode = extractText(children);
+    }
+
+    rawCode = rawCode.replace(/\n$/, '');
 
     const handleCopy = () => {
         navigator.clipboard.writeText(rawCode);
@@ -147,23 +162,23 @@ const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children,
     };
 
     return (
-        <div className="relative my-4 rounded-xl border border-white/10 bg-black/40 overflow-hidden group">
-            {/* Floating Top Right Copy Symbol */}
+        <div className="relative my-4 group rounded-xl bg-zinc-950/70 border border-white/10 overflow-hidden font-mono text-xs shadow-md">
+            {/* Top Right Floating Copy Symbol (Only visible on hover) */}
             <button
                 type="button"
                 onClick={handleCopy}
-                className="absolute top-2.5 right-2.5 z-10 flex items-center justify-center p-1.5 rounded-md bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer shadow-md backdrop-blur-md opacity-70 group-hover:opacity-100"
+                className="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer shadow-lg backdrop-blur-md flex items-center gap-1"
                 title="Copy code"
             >
                 {copied ? (
-                    <PiCheckLight className="w-4 h-4 text-emerald-400" />
+                    <PiCheckLight className="w-3.5 h-3.5 text-emerald-400" />
                 ) : (
-                    <PiCopyLight className="w-4 h-4 text-zinc-300" />
+                    <PiCopyLight className="w-3.5 h-3.5" />
                 )}
             </button>
 
             {/* Code Body */}
-            <pre className="p-4 pr-12 overflow-x-auto text-[13px] leading-relaxed text-zinc-200 font-mono m-0 bg-transparent" {...props}>
+            <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed text-zinc-200 font-mono bg-transparent m-0 border-none rounded-none" {...props}>
                 {children}
             </pre>
         </div>
