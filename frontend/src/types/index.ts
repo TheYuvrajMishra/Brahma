@@ -1,11 +1,3 @@
-export interface WebLinkItem {
-    url: string;
-    title: string;
-    domain: string;
-    favicon: string;
-    status?: 'pending' | 'visiting' | 'completed';
-}
-
 export interface TelemetryStep {
     id: string;
     event: string;
@@ -17,7 +9,7 @@ export interface TelemetryStep {
     favicon?: string;
     url?: string;
     domain?: string;
-    links?: WebLinkItem[];
+    title?: string;
 }
 
 export interface MessageVariant {
