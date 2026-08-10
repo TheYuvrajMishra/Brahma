@@ -64,6 +64,7 @@ export class PlaygroundAdapter implements Adapter {
     private socketMap: Map<string, Socket> = new Map(); // message_id -> Socket
     private sessionMap: Map<string, string> = new Map(); // message_id -> sessionId
     private telemetryMap: Map<string, any[]> = new Map(); // message_id -> TelemetryStep[]
+    private regenerationMap: Map<string, { sessionId: string; assistantMessageId: string }> = new Map();
 
     constructor(private port: number = 5000) {
         const app = express();
@@ -574,11 +575,34 @@ export class PlaygroundAdapter implements Adapter {
                     return;
                 }
                 try {
-                    const session = await ChatSession.findOne({ userId: activeUserId, sessionId }).lean();
+                    const session = await ChatSession.findOne({ userId: activeUserId, sessionId });
                     if (!session) {
                         if (callback) callback({ success: false, error: 'Session not found' });
                         return;
                     }
+
+                    // Backfill stable ID and variant structure for legacy messages
+                    let needsSave = false;
+                    session.messages.forEach((m, idx) => {
+                        if (!m.id) {
+                            m.id = `msg_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 5)}`;
+                            needsSave = true;
+                        }
+                        if (m.role === 'assistant' && (!m.variants || m.variants.length === 0)) {
+                            m.variants = [{
+                                content: m.content,
+                                telemetry: m.telemetry,
+                                timestamp: m.timestamp || new Date()
+                            }];
+                            m.activeVariantIndex = 0;
+                            needsSave = true;
+                        }
+                    });
+
+                    if (needsSave) {
+                        await session.save();
+                    }
+
                     if (callback) callback({
                         success: true,
                         sessionId: session.sessionId,
@@ -628,7 +652,7 @@ export class PlaygroundAdapter implements Adapter {
                     sessionId = payload.sessionId;
                 }
 
-                const messageId = `playground_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                const messageId = `msg_user_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
                 this.socketMap.set(messageId, socket);
                 this.telemetryMap.set(messageId, []);
                 if (sessionId) this.sessionMap.set(messageId, sessionId);
@@ -638,7 +662,12 @@ export class PlaygroundAdapter implements Adapter {
                     try {
                         const session = await ChatSession.findOne({ userId: activeUserId, sessionId });
                         if (session) {
-                            session.messages.push({ role: 'user', content: msgText, timestamp: new Date() });
+                            session.messages.push({
+                                id: messageId,
+                                role: 'user',
+                                content: msgText,
+                                timestamp: new Date()
+                            });
                             
                             if (session.messages.filter(m => m.role === 'user').length === 1 && session.title === 'New Chat') {
                                 const cleanTitle = msgText.trim().substring(0, 30);
@@ -663,6 +692,180 @@ export class PlaygroundAdapter implements Adapter {
                 };
 
                 this.onMessageCallback(normalizedMsg);
+            });
+
+            // ── Chat Edit Message (In-Place Overwrite & Truncation per Option A) ───
+
+            socket.on('chat edit', async (payload: { messageId: string; newText: string; sessionId: string }) => {
+                if (!this.onMessageCallback) return;
+
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId || !payload.sessionId || !payload.messageId || !payload.newText?.trim()) return;
+
+                try {
+                    const session = await ChatSession.findOne({ userId: activeUserId, sessionId: payload.sessionId });
+                    if (!session) return;
+
+                    const targetIndex = session.messages.findIndex(m => m.id === payload.messageId);
+                    if (targetIndex === -1 || session.messages[targetIndex].role !== 'user') return;
+
+                    // Update target message text
+                    session.messages[targetIndex].content = payload.newText.trim();
+                    session.messages[targetIndex].timestamp = new Date();
+
+                    // Truncate all subsequent messages (In-Place Overwrite & Truncation)
+                    session.messages = session.messages.slice(0, targetIndex + 1);
+                    await session.save();
+
+                    // Rewind short-term memory (moment.md)
+                    await rewindMoment(activeUserId, payload.sessionId, session.messages);
+
+                    // Sync updated session state to frontend
+                    socket.emit('session:loaded', {
+                        success: true,
+                        sessionId: session.sessionId,
+                        title: session.title,
+                        messages: session.messages
+                    });
+
+                    // Trigger pipeline execution for edited prompt
+                    const pipelineMsgId = `msg_edit_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                    this.socketMap.set(pipelineMsgId, socket);
+                    this.telemetryMap.set(pipelineMsgId, []);
+                    this.sessionMap.set(pipelineMsgId, payload.sessionId);
+
+                    socket.emit('typing', true);
+
+                    const normalizedMsg: NormalizedMessage = {
+                        user_id: activeUserId,
+                        platform: 'web',
+                        channel_id: payload.sessionId,
+                        content: payload.newText.trim(),
+                        timestamp: new Date(),
+                        message_id: pipelineMsgId
+                    };
+
+                    this.onMessageCallback(normalizedMsg);
+                } catch (err) {
+                    console.error('[Playground] chat edit failed:', err);
+                }
+            });
+
+            // ── Chat Regenerate Response (Response Variants per Option B) ───
+
+            socket.on('chat regenerate', async (payload: { messageId: string; sessionId: string }) => {
+                if (!this.onMessageCallback) return;
+
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId || !payload.sessionId || !payload.messageId) return;
+
+                try {
+                    const session = await ChatSession.findOne({ userId: activeUserId, sessionId: payload.sessionId });
+                    if (!session) return;
+
+                    const targetIndex = session.messages.findIndex(m => m.id === payload.messageId);
+                    if (targetIndex === -1) return;
+
+                    let assistantMessage: any;
+                    let promptUserMsg: any;
+                    let assistantIndex = -1;
+
+                    if (session.messages[targetIndex].role === 'assistant') {
+                        assistantMessage = session.messages[targetIndex];
+                        assistantIndex = targetIndex;
+                        for (let i = targetIndex - 1; i >= 0; i--) {
+                            if (session.messages[i].role === 'user') {
+                                promptUserMsg = session.messages[i];
+                                break;
+                            }
+                        }
+                    } else {
+                        promptUserMsg = session.messages[targetIndex];
+                        if (targetIndex + 1 < session.messages.length && session.messages[targetIndex + 1].role === 'assistant') {
+                            assistantMessage = session.messages[targetIndex + 1];
+                            assistantIndex = targetIndex + 1;
+                        }
+                    }
+
+                    if (!promptUserMsg) return;
+
+                    // If assistant message exists, truncate anything after it
+                    if (assistantIndex !== -1) {
+                        session.messages = session.messages.slice(0, assistantIndex + 1);
+                    } else {
+                        session.messages = session.messages.slice(0, targetIndex + 1);
+                        const asstId = `msg_asst_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                        session.messages.push({
+                            id: asstId,
+                            role: 'assistant',
+                            content: '',
+                            timestamp: new Date(),
+                            variants: [],
+                            activeVariantIndex: 0
+                        });
+                        assistantMessage = session.messages[session.messages.length - 1];
+                        assistantIndex = session.messages.length - 1;
+                    }
+
+                    await session.save();
+
+                    // Rewind moment.md turns up to prompt user message
+                    await rewindMoment(activeUserId, payload.sessionId, session.messages.slice(0, assistantIndex));
+
+                    const pipelineMsgId = `msg_regen_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                    this.socketMap.set(pipelineMsgId, socket);
+                    this.telemetryMap.set(pipelineMsgId, []);
+                    this.sessionMap.set(pipelineMsgId, payload.sessionId);
+                    this.regenerationMap.set(pipelineMsgId, {
+                        sessionId: payload.sessionId,
+                        assistantMessageId: assistantMessage.id
+                    });
+
+                    socket.emit('typing', true);
+
+                    const normalizedMsg: NormalizedMessage = {
+                        user_id: activeUserId,
+                        platform: 'web',
+                        channel_id: payload.sessionId,
+                        content: promptUserMsg.content,
+                        timestamp: new Date(),
+                        message_id: pipelineMsgId
+                    };
+
+                    this.onMessageCallback(normalizedMsg);
+                } catch (err) {
+                    console.error('[Playground] chat regenerate failed:', err);
+                }
+            });
+
+            // ── Chat Select Variant ─────────────────
+
+            socket.on('chat select_variant', async (payload: { messageId: string; variantIndex: number; sessionId: string }) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId || !payload.sessionId || !payload.messageId) return;
+
+                try {
+                    const session = await ChatSession.findOne({ userId: activeUserId, sessionId: payload.sessionId });
+                    if (!session) return;
+
+                    const asstMsg = session.messages.find(m => m.id === payload.messageId);
+                    if (asstMsg && asstMsg.variants && payload.variantIndex >= 0 && payload.variantIndex < asstMsg.variants.length) {
+                        asstMsg.activeVariantIndex = payload.variantIndex;
+                        const targetVariant = asstMsg.variants[payload.variantIndex];
+                        asstMsg.content = targetVariant.content;
+                        asstMsg.telemetry = targetVariant.telemetry;
+                        await session.save();
+
+                        socket.emit('session:loaded', {
+                            success: true,
+                            sessionId: session.sessionId,
+                            title: session.title,
+                            messages: session.messages
+                        });
+                    }
+                } catch (err) {
+                    console.error('[Playground] chat select_variant failed:', err);
+                }
             });
         });
 
@@ -766,6 +969,7 @@ export class PlaygroundAdapter implements Adapter {
     async emit(response: PipelineResponse): Promise<void> {
         const socket = this.socketMap.get(response.originalMessage.message_id);
         const telemetryLogs = this.telemetryMap.get(response.originalMessage.message_id) || [];
+        const regenInfo = this.regenerationMap.get(response.originalMessage.message_id);
 
         if (socket) {
             socket.emit('typing', false);
@@ -777,24 +981,92 @@ export class PlaygroundAdapter implements Adapter {
                 try {
                     const session = await ChatSession.findOne({ userId: response.originalMessage.user_id, sessionId });
                     if (session) {
-                        session.messages.push({ 
-                            role: 'assistant', 
-                            content: response.content, 
-                            timestamp: new Date(),
-                            telemetry: telemetryLogs.length > 0 ? telemetryLogs : undefined 
-                        });
+                        if (regenInfo && regenInfo.assistantMessageId) {
+                            const asstMsg = session.messages.find(m => m.id === regenInfo.assistantMessageId);
+                            if (asstMsg) {
+                                if (!asstMsg.variants || asstMsg.variants.length === 0) {
+                                    asstMsg.variants = [{
+                                        content: asstMsg.content,
+                                        telemetry: asstMsg.telemetry,
+                                        timestamp: asstMsg.timestamp || new Date()
+                                    }];
+                                }
+                                asstMsg.variants.push({
+                                    content: response.content,
+                                    telemetry: telemetryLogs.length > 0 ? telemetryLogs : undefined,
+                                    timestamp: new Date()
+                                });
+                                asstMsg.activeVariantIndex = asstMsg.variants.length - 1;
+                                asstMsg.content = response.content;
+                                asstMsg.telemetry = telemetryLogs.length > 0 ? telemetryLogs : undefined;
+                                asstMsg.timestamp = new Date();
+                            }
+                        } else {
+                            const asstMsgId = `msg_asst_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+                            const newVariant = {
+                                content: response.content,
+                                telemetry: telemetryLogs.length > 0 ? telemetryLogs : undefined,
+                                timestamp: new Date()
+                            };
+                            session.messages.push({ 
+                                id: asstMsgId,
+                                role: 'assistant', 
+                                content: response.content, 
+                                timestamp: new Date(),
+                                telemetry: telemetryLogs.length > 0 ? telemetryLogs : undefined,
+                                variants: [newVariant],
+                                activeVariantIndex: 0
+                            });
+                        }
+
                         await session.save();
 
+                        socket.emit('session:loaded', {
+                            success: true,
+                            sessionId: session.sessionId,
+                            title: session.title,
+                            messages: session.messages
+                        });
                         socket.emit('session:updated', { sessionId, title: session.title });
                     }
                 } catch (err) {
                     console.error('[Playground] Failed to save assistant response:', err);
                 }
                 this.sessionMap.delete(response.originalMessage.message_id);
+                if (regenInfo) this.regenerationMap.delete(response.originalMessage.message_id);
             }
         } else {
             console.warn(`[PlaygroundAdapter] Socket not found for message ${response.originalMessage.message_id}`);
         }
         this.telemetryMap.delete(response.originalMessage.message_id);
+    }
+}
+
+async function rewindMoment(userId: string, channelId: string, remainingMessages: any[]) {
+    try {
+        const momentContent = await MemoryManager.getMoment(userId, channelId);
+        const momentData = MemoryManager.parseMoment(momentContent);
+        
+        const newTurns: string[] = [];
+        for (const msg of remainingMessages) {
+            const cleanText = (msg.content || '').replace(/\s+/g, ' ').trim();
+            if (!cleanText) continue;
+            const truncated = cleanText.length > 1000 ? cleanText.substring(0, 1000) + '...' : cleanText;
+            if (msg.role === 'user') {
+                newTurns.push(`User: ${truncated}`);
+            } else {
+                newTurns.push(`Assistant: ${truncated}`);
+            }
+        }
+        
+        while (newTurns.length > 20) {
+            newTurns.shift();
+        }
+        
+        momentData.turns = newTurns;
+        const updatedMoment = MemoryManager.formatMoment(momentData);
+        await MemoryManager.updateMoment(updatedMoment, userId, channelId);
+    } catch (err) {
+        console.error('[Playground] Failed to rewind moment.md:', err);
     }
 }

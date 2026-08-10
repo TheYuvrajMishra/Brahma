@@ -48,27 +48,27 @@ export const PlaygroundPage: React.FC = () => {
             setCurrentTelemetry(telemetryRef.current);
         };
 
-        const handleChatResponse = (msg: string) => {
-            const finalTelemetry = [...telemetryRef.current];
-            setMessages(prev => [...prev, { 
-                role: 'assistant', 
-                content: msg, 
-                timestamp: new Date().toISOString(), 
-                isNew: true,
-                telemetry: finalTelemetry.length > 0 ? finalTelemetry : undefined
-            }]);
+        const handleChatResponse = () => {
             setCurrentTelemetry([]);
             telemetryRef.current = [];
+        };
+
+        const handleSessionLoaded = (data: any) => {
+            if (data.success && data.messages) {
+                setMessages(data.messages);
+            }
         };
 
         socket.on('typing', handleTyping);
         socket.on('telemetry', handleTelemetry);
         socket.on('chat response', handleChatResponse);
+        socket.on('session:loaded', handleSessionLoaded);
 
         return () => {
             socket.off('typing', handleTyping);
             socket.off('telemetry', handleTelemetry);
             socket.off('chat response', handleChatResponse);
+            socket.off('session:loaded', handleSessionLoaded);
         };
     }, [socket]);
 
@@ -102,9 +102,28 @@ export const PlaygroundPage: React.FC = () => {
 
         const fullMessageText = convertedContext ? `${text}${convertedContext}` : text;
 
-        setMessages(prev => [...prev, { role: 'user', content: text, timestamp: new Date().toISOString() }]);
+        const tempId = `msg_user_${Date.now()}`;
+        setMessages(prev => [...prev, { id: tempId, role: 'user', content: text, timestamp: new Date().toISOString() }]);
         socket.emit('chat message', { text: fullMessageText, sessionId: activeSessionId });
         setInputValue('');
+    };
+
+    // ── Edit User Message ─────────────────────────────────────────────
+    const handleEditMessage = (messageId: string, newText: string) => {
+        if (!socket || !activeSessionId || !newText.trim()) return;
+        socket.emit('chat edit', { messageId, newText: newText.trim(), sessionId: activeSessionId });
+    };
+
+    // ── Regenerate Assistant Message ──────────────────────────────────
+    const handleRegenerateMessage = (messageId: string) => {
+        if (!socket || !activeSessionId) return;
+        socket.emit('chat regenerate', { messageId, sessionId: activeSessionId });
+    };
+
+    // ── Select Response Variant ───────────────────────────────────────
+    const handleSelectVariant = (messageId: string, variantIndex: number) => {
+        if (!socket || !activeSessionId) return;
+        socket.emit('chat select_variant', { messageId, variantIndex, sessionId: activeSessionId });
     };
 
     return (
@@ -120,6 +139,9 @@ export const PlaygroundPage: React.FC = () => {
             handleSubmit={handleSubmit}
             messagesEndRef={messagesEndRef}
             inputRef={inputRef}
+            onEditMessage={handleEditMessage}
+            onRegenerateMessage={handleRegenerateMessage}
+            onSelectVariant={handleSelectVariant}
         />
     );
 };

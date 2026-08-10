@@ -8,13 +8,16 @@ import {
     PiPaperclipLight,
     PiSpinnerLight,
     PiCopyLight,
-    PiCheckLight
+    PiCheckLight,
+    PiPencilLight,
+    PiArrowClockwiseLight,
+    PiCaretLeftLight,
+    PiCaretRightLight
 } from 'react-icons/pi';
-import type { Message, TelemetryStep } from '../types';
+import type { Message, MessageVariant, TelemetryStep } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
 import { ProcessTelemetryAccordion } from './ProcessTelemetryAccordion';
 import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
-
 import { markdownComponents } from './MarkdownComponents';
 
 interface ChatAreaProps {
@@ -29,6 +32,9 @@ interface ChatAreaProps {
     handleSubmit: (e: React.FormEvent, convertedContext?: string) => void;
     messagesEndRef: RefObject<HTMLDivElement | null>;
     inputRef: RefObject<HTMLTextAreaElement | null>;
+    onEditMessage?: (messageId: string, newText: string) => void;
+    onRegenerateMessage?: (messageId: string) => void;
+    onSelectVariant?: (messageId: string, variantIndex: number) => void;
 }
 
 const WITTY_STATUS_PHRASES = [
@@ -63,7 +69,30 @@ const formatISTTime = (isoDateStr?: string) => {
     }
 };
 
-const MessageFooter: React.FC<{ content: string; timestamp?: string; isUser: boolean }> = ({ content, timestamp, isUser }) => {
+interface MessageFooterProps {
+    messageId?: string;
+    content: string;
+    timestamp?: string;
+    isUser: boolean;
+    variants?: MessageVariant[];
+    activeVariantIndex?: number;
+    onStartEdit?: () => void;
+    onRegenerate?: () => void;
+    onSelectVariant?: (index: number) => void;
+    isTyping?: boolean;
+}
+
+const MessageFooter: React.FC<MessageFooterProps> = ({
+    content,
+    timestamp,
+    isUser,
+    variants,
+    activeVariantIndex = 0,
+    onStartEdit,
+    onRegenerate,
+    onSelectVariant,
+    isTyping
+}) => {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -72,10 +101,15 @@ const MessageFooter: React.FC<{ content: string; timestamp?: string; isUser: boo
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const hasMultipleVariants = variants && variants.length > 1;
+
     return (
         <div className={`flex items-center gap-3 mt-1.5 text-[10px] text-zinc-500 font-mono select-none ${isUser ? 'justify-end' : 'justify-start'}`}>
             <span>{formatISTTime(timestamp)}</span>
+            
+            {/* Copy Button */}
             <button
+                type="button"
                 onClick={handleCopy}
                 className="hover:text-zinc-300 transition-colors flex items-center gap-1 cursor-pointer"
                 title="Copy message"
@@ -92,6 +126,59 @@ const MessageFooter: React.FC<{ content: string; timestamp?: string; isUser: boo
                     </>
                 )}
             </button>
+
+            {/* Edit Button (User messages) */}
+            {isUser && onStartEdit && (
+                <button
+                    type="button"
+                    onClick={onStartEdit}
+                    disabled={isTyping}
+                    className="hover:text-zinc-300 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    title="Edit message"
+                >
+                    <PiPencilLight className="w-3 h-3" />
+                    <span>Edit</span>
+                </button>
+            )}
+
+            {/* Regenerate Button (Assistant messages) */}
+            {!isUser && onRegenerate && (
+                <button
+                    type="button"
+                    onClick={onRegenerate}
+                    disabled={isTyping}
+                    className="hover:text-zinc-300 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    title="Regenerate response"
+                >
+                    <PiArrowClockwiseLight className="w-3 h-3" />
+                    <span>Regenerate</span>
+                </button>
+            )}
+
+            {/* Variant Switcher (Assistant messages with multiple variants) */}
+            {!isUser && hasMultipleVariants && onSelectVariant && (
+                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-[10px] text-zinc-300">
+                    <button
+                        type="button"
+                        onClick={() => onSelectVariant(activeVariantIndex - 1)}
+                        disabled={activeVariantIndex === 0 || isTyping}
+                        className="hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                        title="Previous version"
+                    >
+                        <PiCaretLeftLight className="w-3 h-3" />
+                    </button>
+                    <span>{activeVariantIndex + 1} / {variants.length}</span>
+                    <button
+                        type="button"
+                        onClick={() => onSelectVariant(activeVariantIndex + 1)}
+                        disabled={activeVariantIndex === variants.length - 1 || isTyping}
+                        className="hover:text-white disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                        title="Next version"
+                    >
+                        <PiCaretRightLight className="w-3 h-3" />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
@@ -135,11 +222,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     handleSubmit,
     messagesEndRef,
     inputRef,
+    onEditMessage,
+    onRegenerateMessage,
+    onSelectVariant
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [attachedFile, setAttachedFile] = useState<{ name: string; markdown: string } | null>(null);
     const [uploadingFile, setUploadingFile] = useState(false);
     const [showWittyPhase, setShowWittyPhase] = useState(false);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editingText, setEditingText] = useState<string>('');
 
     // Calculate dynamic witty status duration (1s - 3s based on user message length)
     useEffect(() => {
@@ -269,16 +361,59 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
                         {messages.map((msg, i) => (
                             <div 
-                                key={i} 
+                                key={msg.id || i} 
                                 className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {msg.role === 'user' ? (
-                                    <div className="flex flex-col items-end max-w-[85%] group/msg">
-                                        <div className="rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5 w-full">
-                                            <p className="whitespace-pre-wrap">{msg.content}</p>
-                                        </div>
+                                    <div className="flex flex-col items-end max-w-[85%] group/msg w-full sm:w-auto">
+                                        {editingMessageId === msg.id ? (
+                                            <div className="w-full sm:min-w-[360px] bg-zinc-900/90 border border-white/15 rounded-xl p-3 flex flex-col gap-2.5 shadow-xl">
+                                                <textarea
+                                                    value={editingText}
+                                                    onChange={(e) => setEditingText(e.target.value)}
+                                                    className="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-500 outline-none font-sans resize-none overflow-y-auto max-h-[120px]"
+                                                    rows={2}
+                                                    autoFocus
+                                                />
+                                                <div className="flex items-center justify-end gap-2 text-xs font-sans">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingMessageId(null)}
+                                                        className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (onEditMessage && msg.id && editingText.trim()) {
+                                                                onEditMessage(msg.id, editingText.trim());
+                                                            }
+                                                            setEditingMessageId(null);
+                                                        }}
+                                                        className="px-3 py-1 rounded-lg bg-white text-black hover:bg-zinc-200 font-medium transition-colors cursor-pointer"
+                                                    >
+                                                        Save & Submit
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5 w-full">
+                                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                                            </div>
+                                        )}
                                         <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity duration-300">
-                                            <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={true} />
+                                            <MessageFooter 
+                                                messageId={msg.id}
+                                                content={msg.content} 
+                                                timestamp={msg.timestamp} 
+                                                isUser={true}
+                                                isTyping={isTyping}
+                                                onStartEdit={() => {
+                                                    setEditingMessageId(msg.id);
+                                                    setEditingText(msg.content);
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 ) : (
@@ -308,7 +443,25 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                             )}
                                         </div>
                                         <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity duration-300">
-                                            <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={false} />
+                                            <MessageFooter 
+                                                messageId={msg.id}
+                                                content={msg.content} 
+                                                timestamp={msg.timestamp} 
+                                                isUser={false}
+                                                variants={msg.variants}
+                                                activeVariantIndex={msg.activeVariantIndex}
+                                                isTyping={isTyping}
+                                                onRegenerate={() => {
+                                                    if (onRegenerateMessage && msg.id) {
+                                                        onRegenerateMessage(msg.id);
+                                                    }
+                                                }}
+                                                onSelectVariant={(idx) => {
+                                                    if (onSelectVariant && msg.id) {
+                                                        onSelectVariant(msg.id, idx);
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 )}

@@ -8,12 +8,21 @@ export interface TelemetryStep {
     status?: 'pending' | 'active' | 'completed' | 'failed';
 }
 
+export interface MessageVariant {
+    content: string;
+    telemetry?: TelemetryStep[];
+    timestamp: string;
+}
+
 export interface Message {
+    id: string;
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
     isNew?: boolean;
     telemetry?: TelemetryStep[];
+    variants?: MessageVariant[];
+    activeVariantIndex?: number;
 }
 
 export interface Session {
