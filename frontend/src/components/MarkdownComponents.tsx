@@ -49,6 +49,7 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
     const tableRef = useRef<HTMLTableElement>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [copiedFormat, setCopiedFormat] = useState<'csv' | 'tsv' | null>(null);
+    const [isHovered, setIsHovered] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -73,18 +74,22 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
     };
 
     return (
-        <div className="relative my-4 group overflow-x-auto">
-            {/* Top Right Floating Copy Dropdown (Visible on hover) */}
+        <div
+            className="relative my-4 overflow-x-auto"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {/* Top Right Floating Copy Dropdown (Only visible when hovering over this specific table or when dropdown is open) */}
             <div
                 ref={dropdownRef}
-                className={`absolute top-2 right-2 z-20 transition-opacity duration-200 ${
-                    dropdownOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                className={`absolute top-1 right-1 z-20 transition-opacity duration-200 ${
+                    isHovered || dropdownOpen || copiedFormat ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
             >
                 <button
                     type="button"
                     onClick={() => setDropdownOpen(prev => !prev)}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-zinc-300 hover:text-white transition-all cursor-pointer text-xs shadow-xl backdrop-blur-md"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-zinc-300 hover:text-white transition-all cursor-pointer text-xs shadow-xl backdrop-blur-md"
                     title="Copy table data"
                 >
                     {copiedFormat ? (
@@ -108,12 +113,12 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: -4, scale: 0.95 }}
                             transition={{ duration: 0.12 }}
-                            className="absolute right-0 mt-1.5 w-36 py-1 bg-zinc-900 border border-white/15 rounded-lg shadow-2xl backdrop-blur-md z-30 font-sans"
+                            className="absolute right-0 mt-1.5 w-36 bg-zinc-900 border border-white/15 rounded-xl shadow-2xl backdrop-blur-md z-30 font-sans overflow-hidden py-0"
                         >
                             <button
                                 type="button"
                                 onClick={() => handleCopy('csv')}
-                                className="w-full text-left px-3 py-1.5 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors"
+                                className="w-full text-left px-3.5 py-2 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors rounded-t-xl"
                             >
                                 <span>Copy CSV</span>
                                 <span className="text-[10px] text-zinc-500 font-mono">.csv</span>
@@ -121,7 +126,7 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
                             <button
                                 type="button"
                                 onClick={() => handleCopy('tsv')}
-                                className="w-full text-left px-3 py-1.5 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors border-t border-white/5"
+                                className="w-full text-left px-3.5 py-2 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors border-t border-white/5 rounded-b-xl"
                             >
                                 <span>Copy Table</span>
                                 <span className="text-[10px] text-zinc-500 font-mono">TSV</span>
@@ -141,6 +146,7 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
 
 const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
     const [copied, setCopied] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
     
     // Extract raw code text
     const childArray = React.Children.toArray(children);
@@ -162,12 +168,18 @@ const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children,
     };
 
     return (
-        <div className="relative my-4 group rounded-xl bg-zinc-950/70 border border-white/10 overflow-hidden font-mono text-xs shadow-md">
-            {/* Top Right Floating Copy Symbol (Only visible on hover) */}
+        <div
+            className="relative my-3 font-mono text-xs"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            {/* Top Right Floating Copy Symbol (Only visible when hovering over this specific code block) */}
             <button
                 type="button"
                 onClick={handleCopy}
-                className="absolute top-2.5 right-2.5 z-10 p-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-zinc-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer shadow-lg backdrop-blur-md flex items-center gap-1"
+                className={`absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/15 text-zinc-400 hover:text-white transition-opacity duration-200 cursor-pointer shadow-lg backdrop-blur-md flex items-center gap-1 ${
+                    isHovered || copied ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                }`}
                 title="Copy code"
             >
                 {copied ? (
@@ -177,8 +189,8 @@ const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children,
                 )}
             </button>
 
-            {/* Code Body */}
-            <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed text-zinc-200 font-mono bg-transparent m-0 border-none rounded-none" {...props}>
+            {/* Code Body - Open and clean without surrounding card box border */}
+            <pre className="p-3.5 overflow-x-auto text-[13px] leading-relaxed text-zinc-200 font-mono bg-zinc-950/40 rounded-lg m-0 border-none" {...props}>
                 {children}
             </pre>
         </div>

@@ -339,11 +339,11 @@ body {
   margin-bottom: 0;
 }
 .markdown-body pre {
-  background: rgba(0, 0, 0, 0.4) !important;
-  border: 1px solid var(--border-hairline);
-  border-radius: 1rem;
-  padding: 1.25rem;
-  margin: 1.25rem 0;
+  background: rgba(10, 10, 10, 0.4) !important;
+  border: none !important;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin: 1rem 0;
   font-family: var(--font-mono) !important;
   font-size: 0.8125rem;
   overflow-x: auto;

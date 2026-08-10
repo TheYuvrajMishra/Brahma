@@ -273,16 +273,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                 className={`flex w-full ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                             >
                                 {msg.role === 'user' ? (
-                                    <div className="flex flex-col items-end max-w-[85%] group">
+                                    <div className="flex flex-col items-end max-w-[85%] group/msg">
                                         <div className="rounded-lg px-4 py-2.5 bg-white/[0.06] text-zinc-100 text-sm shadow-sm select-text font-sans leading-relaxed border border-white/5 w-full">
                                             <p className="whitespace-pre-wrap">{msg.content}</p>
                                         </div>
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity duration-300">
                                             <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={true} />
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex-1 max-w-[95%] py-0.5 select-text flex flex-col items-start group">
+                                    <div className="flex-1 max-w-[95%] py-0.5 select-text flex flex-col items-start group/msg">
                                         {/* Telemetry Execution Thoughts Accordion */}
                                         {msg.telemetry && msg.telemetry.length > 0 && (
                                             <ProcessTelemetryAccordion 
@@ -307,7 +307,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                                             )}
                                         </div>
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity duration-300">
                                             <MessageFooter content={msg.content} timestamp={msg.timestamp} isUser={false} />
                                         </div>
                                     </div>
