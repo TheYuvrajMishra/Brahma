@@ -42,11 +42,7 @@ export const PlaygroundPage: React.FC = () => {
                 stage: data.stage || 'Pipeline Execution',
                 label: data.label || 'Processing stage payload...',
                 timestamp: data.timestamp || new Date().toISOString(),
-                details: data.details || data.plan || data.step || null,
-                favicon: data.favicon || (data.details && data.details.favicon),
-                url: data.url || (data.details && data.details.url),
-                domain: data.domain || (data.details && data.details.domain),
-                title: data.title || (data.details && data.details.title)
+                details: data.details || data.plan || data.step || null
             };
             telemetryRef.current = [...telemetryRef.current, stepItem];
             setCurrentTelemetry(telemetryRef.current);
