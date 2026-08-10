@@ -15,6 +15,8 @@ import { TypewriterMarkdown } from './TypewriterMarkdown';
 import { ProcessTelemetryAccordion } from './ProcessTelemetryAccordion';
 import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
 
+import { markdownComponents } from './MarkdownComponents';
+
 interface ChatAreaProps {
     sidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
@@ -302,7 +304,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                                     }}
                                                 />
                                             ) : (
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
                                             )}
                                         </div>
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">

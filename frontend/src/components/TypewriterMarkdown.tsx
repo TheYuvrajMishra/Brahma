@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { markdownComponents } from './MarkdownComponents';
 
 interface TypewriterMarkdownProps {
     content: string;
@@ -53,5 +54,6 @@ export const TypewriterMarkdown: React.FC<TypewriterMarkdownProps> = ({ content,
         }
     }, [displayedContent, onUpdate]);
 
-    return <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayedContent}</ReactMarkdown>;
+    return <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{displayedContent}</ReactMarkdown>;
 };
+

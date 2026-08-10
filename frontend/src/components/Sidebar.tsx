@@ -187,7 +187,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             ) : (
                                 <button
                                     onClick={() => setResetConfirm(true)}
-                                    className="w-full py-1 px-2 rounded-lg hover:bg-red-500/10 text-[10px] font-medium text-zinc-400 hover:text-red-400 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                    className="w-full py-1 px-2 rounded-lg text-[10px] font-medium text-zinc-400 hover:text-red-400 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                                     title="Deletes all brain context, chat history & restarts onboarding"
                                 >
                                     <PiArrowCounterClockwiseLight className="w-3 h-3 text-red-400" />
