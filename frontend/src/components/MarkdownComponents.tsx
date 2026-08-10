@@ -4,10 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     PiCopyLight,
     PiCheckLight,
-    PiCaretDownLight,
-    PiTableLight,
-    PiTerminalLight,
-    PiCodeLight
+    PiCaretDownLight
 } from 'react-icons/pi';
 
 const tableToCSV = (tableEl: HTMLTableElement): string => {
@@ -76,62 +73,57 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
     };
 
     return (
-        <div className="relative my-6 rounded-xl border border-white/15 bg-zinc-950/70 overflow-hidden group shadow-lg">
-            {/* Table Header Bar */}
-            <div className="flex items-center justify-between px-3.5 py-2 bg-white/[0.04] border-b border-white/10 text-xs text-zinc-300 font-mono select-none">
-                <div className="flex items-center gap-2">
-                    <PiTableLight className="w-4 h-4 text-zinc-400" />
-                    <span className="font-semibold text-zinc-200 uppercase tracking-wider text-[11px]">Table Data</span>
-                </div>
-                <div className="relative" ref={dropdownRef}>
-                    <button
-                        type="button"
-                        onClick={() => setDropdownOpen(prev => !prev)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs font-sans"
-                    >
-                        {copiedFormat ? (
-                            <>
-                                <PiCheckLight className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="text-emerald-400 font-medium">Copied {copiedFormat.toUpperCase()}</span>
-                            </>
-                        ) : (
-                            <>
-                                <PiCopyLight className="w-3.5 h-3.5 text-zinc-400" />
-                                <span>Copy Table</span>
-                                <PiCaretDownLight className="w-3 h-3 text-zinc-400 ml-0.5" />
-                            </>
-                        )}
-                    </button>
+        <div className="relative my-5 rounded-xl border border-white/15 bg-zinc-950/60 overflow-hidden group">
+            {/* Minimalist Floating Copy Dropdown at top right */}
+            <div className="absolute top-2.5 right-2.5 z-20" ref={dropdownRef}>
+                <button
+                    type="button"
+                    onClick={() => setDropdownOpen(prev => !prev)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-zinc-300 hover:text-white transition-all cursor-pointer text-xs shadow-md backdrop-blur-md opacity-80 group-hover:opacity-100"
+                    title="Copy Table"
+                >
+                    {copiedFormat ? (
+                        <>
+                            <PiCheckLight className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400 font-medium">Copied {copiedFormat.toUpperCase()}</span>
+                        </>
+                    ) : (
+                        <>
+                            <PiCopyLight className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>Copy</span>
+                            <PiCaretDownLight className="w-3 h-3 text-zinc-400" />
+                        </>
+                    )}
+                </button>
 
-                    <AnimatePresence>
-                        {dropdownOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -4, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -4, scale: 0.95 }}
-                                transition={{ duration: 0.12 }}
-                                className="absolute right-0 mt-1.5 w-44 py-1 bg-zinc-900 border border-white/15 rounded-lg shadow-2xl backdrop-blur-md z-30 font-sans"
+                <AnimatePresence>
+                    {dropdownOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -4, scale: 0.95 }}
+                            transition={{ duration: 0.12 }}
+                            className="absolute right-0 mt-1.5 w-36 py-1 bg-zinc-900/95 border border-white/15 rounded-lg shadow-2xl backdrop-blur-md z-30 font-sans"
+                        >
+                            <button
+                                type="button"
+                                onClick={() => handleCopy('csv')}
+                                className="w-full text-left px-3 py-1.5 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors"
                             >
-                                <button
-                                    type="button"
-                                    onClick={() => handleCopy('csv')}
-                                    className="w-full text-left px-3 py-2 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors"
-                                >
-                                    <span>Copy CSV</span>
-                                    <span className="text-[10px] text-zinc-500 font-mono">.csv</span>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleCopy('tsv')}
-                                    className="w-full text-left px-3 py-2 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors border-t border-white/5"
-                                >
-                                    <span>Copy Table (TSV)</span>
-                                    <span className="text-[10px] text-zinc-500 font-mono">TSV</span>
-                                </button>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                                <span>Copy CSV</span>
+                                <span className="text-[10px] text-zinc-500 font-mono">.csv</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleCopy('tsv')}
+                                className="w-full text-left px-3 py-1.5 text-xs text-zinc-200 hover:text-white hover:bg-white/10 flex items-center justify-between cursor-pointer transition-colors border-t border-white/5"
+                            >
+                                <span>Copy Table</span>
+                                <span className="text-[10px] text-zinc-500 font-mono">TSV</span>
+                            </button>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {/* Table Content */}
@@ -146,28 +138,7 @@ const MarkdownTable: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({ 
 
 const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children, ...props }) => {
     const [copied, setCopied] = useState(false);
-    
-    // Inspect child element to find code props
-    const childArray = React.Children.toArray(children);
-    let language = '';
-    let rawCode = '';
-
-    if (childArray.length > 0 && React.isValidElement(childArray[0])) {
-        const codeElement = childArray[0] as React.ReactElement<any>;
-        const className = codeElement.props?.className || '';
-        const match = /language-(\w+)/.exec(className);
-        if (match) {
-            language = match[1];
-        }
-        rawCode = extractText(codeElement.props?.children);
-    } else {
-        rawCode = extractText(children);
-    }
-
-    rawCode = rawCode.replace(/\n$/, '');
-
-    const isBash = ['bash', 'sh', 'zsh', 'shell', 'cmd', 'powershell', 'terminal'].includes(language.toLowerCase()) || 
-                   (!language && (rawCode.startsWith('$ ') || rawCode.startsWith('sudo ') || rawCode.startsWith('npm ') || rawCode.startsWith('git ') || rawCode.startsWith('cd ')));
+    const rawCode = extractText(children).replace(/\n$/, '');
 
     const handleCopy = () => {
         navigator.clipboard.writeText(rawCode);
@@ -176,47 +147,23 @@ const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children,
     };
 
     return (
-        <div className="relative my-5 rounded-xl border border-white/15 bg-zinc-950/80 overflow-hidden font-mono text-xs group shadow-lg">
-            {/* Code Header Bar */}
-            <div className="flex items-center justify-between px-3.5 py-2 bg-white/[0.04] border-b border-white/10 text-zinc-400 select-none">
-                <div className="flex items-center gap-2">
-                    {isBash ? (
-                        <PiTerminalLight className="w-4 h-4 text-emerald-400" />
-                    ) : (
-                        <PiCodeLight className="w-4 h-4 text-zinc-400" />
-                    )}
-                    <span className="text-xs uppercase tracking-wider font-semibold text-zinc-200">
-                        {language || (isBash ? 'bash' : 'code')}
-                    </span>
-                    {isBash && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-sans font-medium">
-                            Terminal
-                        </span>
-                    )}
-                </div>
-
-                <button
-                    type="button"
-                    onClick={handleCopy}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-300 hover:text-white transition-colors cursor-pointer text-xs font-sans"
-                    title={isBash ? "Copy bash command" : "Copy code"}
-                >
-                    {copied ? (
-                        <>
-                            <PiCheckLight className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-400 font-medium">Copied!</span>
-                        </>
-                    ) : (
-                        <>
-                            <PiCopyLight className="w-3.5 h-3.5 text-zinc-400" />
-                            <span>{isBash ? "Copy Command" : "Copy Code"}</span>
-                        </>
-                    )}
-                </button>
-            </div>
+        <div className="relative my-4 rounded-xl border border-white/10 bg-black/40 overflow-hidden group">
+            {/* Floating Top Right Copy Symbol */}
+            <button
+                type="button"
+                onClick={handleCopy}
+                className="absolute top-2.5 right-2.5 z-10 flex items-center justify-center p-1.5 rounded-md bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer shadow-md backdrop-blur-md opacity-70 group-hover:opacity-100"
+                title="Copy code"
+            >
+                {copied ? (
+                    <PiCheckLight className="w-4 h-4 text-emerald-400" />
+                ) : (
+                    <PiCopyLight className="w-4 h-4 text-zinc-300" />
+                )}
+            </button>
 
             {/* Code Body */}
-            <pre className="p-4 overflow-x-auto text-[13px] leading-relaxed text-zinc-200 font-mono bg-black/40 m-0 border-none rounded-none" {...props}>
+            <pre className="p-4 pr-12 overflow-x-auto text-[13px] leading-relaxed text-zinc-200 font-mono m-0 bg-transparent" {...props}>
                 {children}
             </pre>
         </div>
