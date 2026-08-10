@@ -6,6 +6,9 @@ export interface TelemetryStep {
     timestamp: string;
     details?: any;
     status?: 'pending' | 'active' | 'completed' | 'failed';
+    favicon?: string;
+    url?: string;
+    domain?: string;
 }
 
 export interface MessageVariant {

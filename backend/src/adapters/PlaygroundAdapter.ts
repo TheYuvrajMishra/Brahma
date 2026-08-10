@@ -959,6 +959,19 @@ export class PlaygroundAdapter implements Adapter {
                 label: 'Synthesizing tool outputs into response...'
             });
         });
+
+        EventBus.on('telemetry:custom', (payload: any) => {
+            if (payload && payload.message_id) {
+                sendTelemetry(payload.message_id, 'LIVE_RESEARCH_PROGRESS', {
+                    stage: payload.stage || 'Deep Web Research',
+                    label: payload.label || 'Visiting web page...',
+                    favicon: payload.favicon,
+                    url: payload.url,
+                    domain: payload.domain,
+                    details: payload.details
+                });
+            }
+        });
     }
 
     async init(onMessage: (msg: NormalizedMessage) => void): Promise<void> {

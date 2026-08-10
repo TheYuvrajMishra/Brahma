@@ -19,6 +19,16 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
 
     const activeStep = telemetry[telemetry.length - 1];
 
+    const getFavicon = (step: TelemetryStep) => {
+        return step.favicon || (step.details && step.details.favicon);
+    };
+
+    const getUrl = (step: TelemetryStep) => {
+        return step.url || (step.details && step.details.url);
+    };
+
+    const activeFavicon = activeStep ? getFavicon(activeStep) : null;
+
     return (
         <div className="w-full my-1.5 text-xs font-sans">
             {/* Minimalist Single Line Pill */}
@@ -33,7 +43,11 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
 
                 <div className="flex items-center gap-2 overflow-hidden">
                     {isLive ? (
-                        <PiClockLight className="w-3.5 h-3.5 text-zinc-300 animate-spin shrink-0" />
+                        activeFavicon ? (
+                            <img src={activeFavicon} className="w-3.5 h-3.5 rounded shrink-0 object-contain" alt="" />
+                        ) : (
+                            <PiClockLight className="w-3.5 h-3.5 text-zinc-300 animate-spin shrink-0" />
+                        )
                     ) : (
                         <PiCheckCircleLight className="w-3.5 h-3.5 text-white shrink-0" />
                     )}
@@ -58,12 +72,27 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                         /* Live Single Active Step View */
                         <div key={activeStep?.id} className="space-y-1.5 animate-fadeIn">
                             <div className="flex items-center gap-2 text-zinc-200 font-medium">
-                                <PiClockLight className="w-3.5 h-3.5 text-zinc-400" />
+                                {activeFavicon ? (
+                                    <img src={activeFavicon} className="w-3.5 h-3.5 rounded shrink-0 object-contain" alt="" />
+                                ) : (
+                                    <PiClockLight className="w-3.5 h-3.5 text-zinc-400" />
+                                )}
                                 <span>{activeStep?.stage}</span>
                             </div>
-                            <p className="text-zinc-300 text-[11px] leading-relaxed font-mono pl-5">
-                                {activeStep?.label}
-                            </p>
+                            <div className="text-zinc-300 text-[11px] leading-relaxed font-mono pl-5 flex items-center gap-2 flex-wrap">
+                                <span>{activeStep?.label}</span>
+                                {getUrl(activeStep) && (
+                                    <a
+                                        href={getUrl(activeStep)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-emerald-400 border border-white/10 transition-colors text-[10px]"
+                                    >
+                                        {activeFavicon && <img src={activeFavicon} className="w-3 h-3 rounded" alt="" />}
+                                        <span className="truncate max-w-[200px]">{activeStep.domain || getUrl(activeStep)}</span>
+                                    </a>
+                                )}
+                            </div>
 
                             {activeStep?.details && (
                                 <div className="pl-5 pt-1">
@@ -76,29 +105,48 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                     ) : (
                         /* Completed Full Thought Timeline */
                         <div className="space-y-3.5 py-1">
-                            {telemetry.map((step, idx) => (
-                                <div key={step.id || idx} className="space-y-1">
-                                    <div className="flex items-center gap-2 text-zinc-300 font-medium text-[12px]">
-                                        <PiClockLight className="w-3.5 h-3.5 text-zinc-400" />
-                                        <span>{step.stage}</span>
-                                    </div>
-                                    
-                                    <p className="text-zinc-400 text-[11px] leading-relaxed font-mono pl-5">
-                                        {step.label}
-                                    </p>
+                            {telemetry.map((step, idx) => {
+                                const favicon = getFavicon(step);
+                                const url = getUrl(step);
+                                return (
+                                    <div key={step.id || idx} className="space-y-1">
+                                        <div className="flex items-center gap-2 text-zinc-300 font-medium text-[12px]">
+                                            {favicon ? (
+                                                <img src={favicon} className="w-3.5 h-3.5 rounded shrink-0 object-contain" alt="" />
+                                            ) : (
+                                                <PiClockLight className="w-3.5 h-3.5 text-zinc-400" />
+                                            )}
+                                            <span>{step.stage}</span>
+                                        </div>
+                                        
+                                        <div className="text-zinc-400 text-[11px] leading-relaxed font-mono pl-5 flex items-center gap-2 flex-wrap">
+                                            <span>{step.label}</span>
+                                            {url && (
+                                                <a
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-emerald-400 border border-white/10 transition-colors text-[10px]"
+                                                >
+                                                    {favicon && <img src={favicon} className="w-3 h-3 rounded" alt="" />}
+                                                    <span className="truncate max-w-[200px]">{step.domain || url}</span>
+                                                </a>
+                                            )}
+                                        </div>
 
-                                    {step.details && (
-                                        <details className="pl-5 mt-1">
-                                            <summary className="text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300 transition-colors">
-                                                View step payload
-                                            </summary>
-                                            <pre className="mt-1.5 p-2.5 rounded-lg bg-zinc-950/90 border border-white/5 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-44">
-                                                {typeof step.details === 'string' ? step.details : JSON.stringify(step.details, null, 2)}
-                                            </pre>
-                                        </details>
-                                    )}
-                                </div>
-                            ))}
+                                        {step.details && (
+                                            <details className="pl-5 mt-1">
+                                                <summary className="text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300 transition-colors">
+                                                    View step payload
+                                                </summary>
+                                                <pre className="mt-1.5 p-2.5 rounded-lg bg-zinc-950/90 border border-white/5 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-44">
+                                                    {typeof step.details === 'string' ? step.details : JSON.stringify(step.details, null, 2)}
+                                                </pre>
+                                            </details>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
@@ -106,6 +154,3 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
         </div>
     );
 };
-
-
-

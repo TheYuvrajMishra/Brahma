@@ -1,10 +1,10 @@
-FROM node:20-alpine
+FROM node:20-bookworm
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci
+RUN npm ci && npx playwright install-deps chromium && npx playwright install chromium
 
 COPY . .
 
