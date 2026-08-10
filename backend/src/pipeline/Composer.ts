@@ -86,6 +86,7 @@ The user greeted you. Respond with a warm, natural, helpful greeting matching yo
             };
         } else {
             // Simple bucket
+            const researchCtx = this.formatResearchContext(researchResult);
             const systemPrompt = `
 You are Brahma, an intelligent AI assistant runtime.
 Here is your soul/personality:
@@ -96,8 +97,9 @@ ${moment}
 
 ### Relevant Long-Term Facts (Zehn)
 ${zehn}
+${researchCtx ? `\n### Pre-Researched Web Context\n${researchCtx}` : ''}
 
-Answer the user directly and accurately. Use your personality and memory for context.
+Answer the user directly and accurately. Use your personality, memory, and researched web context to give a clear answer. Cite sources if web context is provided.
 `.trim();
 
             const simpleResponse = await LLMService.chat(systemPrompt, message.content);

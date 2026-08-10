@@ -175,16 +175,16 @@ Respond ONLY with a valid JSON object (no markdown, no backticks):
             try {
                 console.log(`[Researcher] Executing web_search for: ${task.target}`);
                 totalSearches++;
-                const searchOutput = await SkillRegistry.runSkill('web_search', { query: task.target });
+                const searchOutput = await SkillRegistry.runSkill('web_search', { query: task.target, _message_id: messageId });
 
                 const entry: ContextEntry = {
                     entity_name: task.target,
                     what_it_is: `Web search results for ${task.target}`,
-                    key_facts: [searchOutput.substring(0, 300)],
+                    key_facts: [searchOutput],
                     current_status: 'active',
                     relevant_to_goal: 'high',
-                    sources: ['DuckDuckGo Search'],
-                    confidence: 'medium',
+                    sources: ['Live Web Search'],
+                    confidence: 'high',
                     last_updated: new Date().toISOString(),
                     researched_at: Date.now()
                 };

@@ -40,6 +40,9 @@ export class Router {
         const actionVerbs = ['create', 'plan', 'research', 'summarize', 'write', 'analyze', 'generate', 'build', 'send', 'mail', 'email', 'message', 'msg', 'save', 'update', 'append', 'read', 'put', 'insert', 'add', 'remove', 'delete', 'clear', 'fix', 'clean', 'format', 'design', 'style'];
         const hasActionVerb = actionVerbs.some(verb => text.includes(verb));
         
+        const questionWords = ['what', 'who', 'when', 'where', 'why', 'how', 'which', 'explain', 'search', 'find', 'news', 'protest', 'latest', 'today', 'price', 'define', 'meaning'];
+        const isQuestion = questionWords.some(qw => text.toLowerCase().includes(qw));
+
         const moment = await MemoryManager.getMoment(message.user_id, message.channel_id);
         const hasActiveTask = /active task:\s*(?!none\b)\w+/i.test(moment);
         const confirmationWords = ['yes', 'confirm', 'yup', 'do it', 'go ahead', 'sure', 'ok', 'okay', 'yep', 'y', 'correct'];
@@ -63,7 +66,16 @@ export class Router {
             };
         }
 
-        if (words.length <= 6 && !hasActionVerb && !hasActiveTask && !isConfirmation) {
+        if (isQuestion) {
+            return {
+                bucket: 'complex',
+                rule_matched: 'rule_question_research',
+                confidence_score: 0.95,
+                intent: 'research'
+            };
+        }
+
+        if (words.length <= 6 && !hasActionVerb && !isQuestion && !hasActiveTask && !isConfirmation) {
             return {
                 bucket: 'simple',
                 rule_matched: 'rule_length_and_verbs',
