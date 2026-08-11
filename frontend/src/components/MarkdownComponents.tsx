@@ -198,9 +198,10 @@ const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children,
 };
 
 const MarkdownCode: React.FC<React.HTMLAttributes<HTMLElement> & { inline?: boolean }> = ({ inline, children, className, ...props }) => {
-    if (inline) {
+    const isBlock = !inline && (className?.includes('language-') || (typeof children === 'string' && children.includes('\n')));
+    if (!isBlock) {
         return (
-            <code className="px-1.5 py-0.5 rounded bg-white/10 text-zinc-200 font-mono text-[0.8125rem] border border-white/5" {...props}>
+            <code className="px-1.5 py-0.5 rounded-md bg-white/10 text-zinc-100 font-mono text-[13px] sm:text-[14px] border border-white/10 shadow-xs" {...props}>
                 {children}
             </code>
         );
@@ -210,37 +211,82 @@ const MarkdownCode: React.FC<React.HTMLAttributes<HTMLElement> & { inline?: bool
 
 export const markdownComponents: Components = {
     h1: ({ children }) => (
-        <h1 className="text-3xl sm:text-4xl font-extrabold text-white mt-8 mb-4 font-display tracking-tight leading-tight border-b border-white/15 pb-3">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white mt-7 mb-4 first:mt-0 font-display tracking-tight leading-tight border-b border-white/15 pb-3">
             {children}
         </h1>
     ),
     h2: ({ children }) => (
-        <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 mt-7 mb-3.5 font-display tracking-tight leading-snug border-b border-white/10 pb-2">
+        <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-zinc-50 mt-6 mb-3 first:mt-0 font-display tracking-tight leading-snug border-b border-white/10 pb-2">
             {children}
         </h2>
     ),
     h3: ({ children }) => (
-        <h3 className="text-xl sm:text-2xl font-semibold text-zinc-100 mt-6 mb-3 font-display tracking-tight leading-snug">
+        <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-zinc-100 mt-5 mb-2.5 first:mt-0 font-display tracking-tight leading-snug">
             {children}
         </h3>
     ),
     h4: ({ children }) => (
-        <h4 className="text-lg sm:text-xl font-semibold text-zinc-200 mt-5 mb-2.5 font-sans leading-snug">
+        <h4 className="text-base sm:text-lg lg:text-xl font-semibold text-zinc-200 mt-4 mb-2 first:mt-0 font-sans leading-snug">
             {children}
         </h4>
     ),
     h5: ({ children }) => (
-        <h5 className="text-base sm:text-lg font-medium text-zinc-300 mt-4 mb-2 font-sans">
+        <h5 className="text-sm sm:text-base font-semibold text-zinc-300 uppercase tracking-wide mt-3 mb-1.5 first:mt-0 font-sans">
             {children}
         </h5>
     ),
     h6: ({ children }) => (
-        <h6 className="text-sm font-semibold text-zinc-400 uppercase tracking-widest mt-4 mb-1.5 font-mono">
+        <h6 className="text-xs sm:text-sm font-medium text-zinc-400 uppercase tracking-widest mt-3 mb-1 first:mt-0 font-mono">
             {children}
         </h6>
     ),
+    p: ({ children }) => (
+        <p className="text-[15px] sm:text-[16px] leading-[1.75] text-zinc-200/90 font-sans mb-4 last:mb-0">
+            {children}
+        </p>
+    ),
+    strong: ({ children }) => (
+        <strong className="font-semibold text-white tracking-wide">
+            {children}
+        </strong>
+    ),
+    em: ({ children }) => (
+        <em className="italic text-zinc-200">
+            {children}
+        </em>
+    ),
+    ul: ({ children }) => (
+        <ul className="my-3.5 pl-6 list-disc space-y-2 text-zinc-200 marker:text-zinc-400">
+            {children}
+        </ul>
+    ),
+    ol: ({ children }) => (
+        <ol className="my-3.5 pl-6 list-decimal space-y-2 text-zinc-200 marker:text-zinc-400 marker:font-mono">
+            {children}
+        </ol>
+    ),
+    li: ({ children }) => (
+        <li className="text-[15px] sm:text-[16px] leading-relaxed text-zinc-200/90 pl-1">
+            {children}
+        </li>
+    ),
+    blockquote: ({ children }) => (
+        <blockquote className="my-4 px-4 py-3.5 bg-white/[0.03] border-l-4 border-white/30 rounded-r-xl text-zinc-300 text-[15px] leading-relaxed italic shadow-sm backdrop-blur-sm">
+            {children}
+        </blockquote>
+    ),
+    a: ({ href, children }) => (
+        <a 
+            href={href} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/40 hover:decoration-sky-300 font-medium transition-colors"
+        >
+            {children}
+        </a>
+    ),
     hr: () => (
-        <hr className="my-8 border-0 border-t border-white/15" />
+        <hr className="my-7 border-0 border-t border-white/15" />
     ),
     table: MarkdownTable,
     pre: MarkdownPre,

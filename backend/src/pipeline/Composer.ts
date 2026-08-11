@@ -4,6 +4,17 @@ import { MemoryManager } from '../core/MemoryManager';
 import { LLMService } from '../services/LLMService';
 import { ExecutionResult } from './Executor';
 
+const MARKDOWN_HIERARCHY_PROMPT = `
+### Response Formatting & Visual Hierarchy Guidelines
+Format your response using clean Markdown structure and a clear visual hierarchy:
+- **Headings**: Use Headings (# Main Title, ## Primary Section, ### Sub-Section, #### Micro-Title) logically to structure your content into clear sections. Do not skip heading levels.
+- **Scannability & Bold Terms**: Bold (**key concept**) important technical terms, metrics, key concepts, and takeaways so the user can easily scan the answer.
+- **Paragraphs**: Write clear, well-spaced paragraphs (2-4 sentences max per paragraph). Avoid dense unformatted walls of text.
+- **Lists**: Use bullet points (- or *) for lists of features/items, and numbered lists (1., 2.) for step-by-step workflows.
+- **Callouts & Highlights**: Use blockquotes (> summary or key takeaway) for key highlights or executive summaries.
+- **Code & Tables**: Use fenced code blocks with language identifiers for all code/commands, and Markdown tables for structured comparison data.
+`.trim();
+
 export class Composer {
     /**
      * Phase 8: Final Synthesis
@@ -18,12 +29,12 @@ export class Composer {
             if (!executionLog) {
                 if (researchResult?.context_store?.entries?.length) {
                     const ctx = this.formatResearchContext(researchResult);
-                    const prompt = `You are Brahma. Here is your personality:\n${soul}\n\nPre-researched context:\n${ctx}\n\nUsing the context above, respond to the user. Cite sources with [1] notation only if factual. Be direct.`.trim();
+                    const prompt = `You are Brahma. Here is your personality:\n${soul}\n\n${MARKDOWN_HIERARCHY_PROMPT}\n\nPre-researched context:\n${ctx}\n\nUsing the context above, respond to the user. Cite sources with [1] notation only if factual. Be direct.`.trim();
                     const resp = await LLMService.chat(prompt, message.content);
                     if (resp) return { originalMessage: message, content: resp };
                 }
                 
-                const directResp = await LLMService.chat(`You are Brahma. Personality:\n${soul}\n\nGive your best answer.`, message.content);
+                const directResp = await LLMService.chat(`You are Brahma. Personality:\n${soul}\n\n${MARKDOWN_HIERARCHY_PROMPT}\n\nGive your best answer.`, message.content);
                 return { originalMessage: message, content: directResp || 'I understood that you wanted me to do a complex task, but I failed to generate a valid plan for it.' };
             }
 
@@ -52,6 +63,9 @@ Execution Results:
 ${logString}
 
 Your task: Synthesize the final answer for the user based strictly on the execution results and gathered context above.
+
+${MARKDOWN_HIERARCHY_PROMPT}
+
 Rules:
 - Be clear, coherent, helpful, and natural.
 - Do NOT output JSON or raw logs unless specifically asked.
@@ -98,6 +112,8 @@ ${moment}
 ### Relevant Long-Term Facts (Zehn)
 ${zehn}
 ${researchCtx ? `\n### Pre-Researched Web Context\n${researchCtx}` : ''}
+
+${MARKDOWN_HIERARCHY_PROMPT}
 
 Answer the user directly and accurately. Use your personality, memory, and researched web context to give a clear answer. Cite sources if web context is provided.
 `.trim();
