@@ -84,10 +84,15 @@ export class Router {
             };
         }
 
-        // 2.5 Force complex if action verb is explicitly used
-        if (hasActionVerb) {
+        // 2.5 Action verb intent determination with context checking
+        const containsEmailAddress = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text);
+        const hasExplicitEmailInstruction = /(^|\s)(send|mail|write|compose|dispatch)\s+(an?\s+)?(email|mail|msg|message)/i.test(text) ||
+                                            /(^|\s)send\s+[^\s]+@[^\s]+/i.test(text) ||
+                                            /(^|\s)(email|mail|msg)\s+to\s+/i.test(text);
+
+        if (hasActionVerb && (!containsEmailAddress || hasExplicitEmailInstruction)) {
             let determinedIntent: RouteResult['intent'] = 'other';
-            if (text.includes('mail') || text.includes('email') || text.includes('send') || text.includes('msg') || text.includes('message')) {
+            if (hasExplicitEmailInstruction) {
                 determinedIntent = 'email_request';
             } else if (text.includes('sheet') || text.includes('spreadsheet') || text.includes('excel') || text.includes('checkbox') || text.includes('checkboxes') || text.includes('routine') || text.includes('daily routine') || text.includes('column') || text.includes('row')) {
                 determinedIntent = 'spreadsheet_request';
@@ -96,12 +101,16 @@ export class Router {
             } else if (text.includes('create') || text.includes('build') || text.includes('plan')) {
                 determinedIntent = 'command_execution';
             }
-            return {
-                bucket: 'complex',
-                rule_matched: 'rule_action_verb',
-                confidence_score: 0.9,
-                intent: determinedIntent
-            };
+
+            // Only promote to complex if an actual explicit action instruction exists
+            if (determinedIntent !== 'other') {
+                return {
+                    bucket: 'complex',
+                    rule_matched: 'rule_action_verb',
+                    confidence_score: 0.9,
+                    intent: determinedIntent
+                };
+            }
         }
 
         // 3. LLM Fallback (Complex vs Simple + Intent Classification)

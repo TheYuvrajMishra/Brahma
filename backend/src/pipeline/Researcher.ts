@@ -112,6 +112,13 @@ Respond ONLY with a valid JSON object (no markdown, no backticks):
             try {
                 const clean = llmResp.replace(/```(?:json)?/gi, '').trim();
                 const parsed = JSON.parse(clean);
+                
+                const isExplicitResearchRequest = /(research|search|find\s+info|who\s+is|who\s+owns|investigate|look\s*up)/i.test(message.content);
+                let flagged: string[] = Array.isArray(parsed.flagged_entities) ? parsed.flagged_entities : [];
+                if (!isExplicitResearchRequest) {
+                    flagged = flagged.filter(e => !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(String(e).trim()));
+                }
+
                 return {
                     intent: parsed.intent || 'general',
                     entities: Array.isArray(parsed.entities) ? parsed.entities : [],
@@ -119,7 +126,7 @@ Respond ONLY with a valid JSON object (no markdown, no backticks):
                     constraints: Array.isArray(parsed.constraints) ? parsed.constraints : [],
                     context: parsed.context || '',
                     request_type: parsed.request_type || 'casual',
-                    flagged_entities: Array.isArray(parsed.flagged_entities) ? parsed.flagged_entities : [],
+                    flagged_entities: flagged,
                 };
             } catch (e) {
                 console.warn('[Researcher] LLM JSON parse failed, falling back.');

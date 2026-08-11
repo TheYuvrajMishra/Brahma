@@ -50,7 +50,34 @@ export function sanitizeEmailText(rawText: string): string {
 
     // 5. Remove dependency context markers or step outputs if leaked
     cleaned = cleaned.replace(/--- Output from Step \d+ [\s\S]*?---/g, '');
-    
+
+    // 6. Normalize Paragraphs & Remove Unnecessary Mid-Paragraph Line Breaks
+    const blocks = cleaned.split(/\n\s*\n/);
+    const cleanedBlocks = blocks.map(block => {
+        const trimmed = block.trim();
+        if (!trimmed) return '';
+
+        const blockLines = trimmed.split('\n').map(l => l.trim()).filter(Boolean);
+
+        // Keep list blocks intact (lines starting with -, *, •, or numbered 1., 2.)
+        const isListBlock = blockLines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l)) || 
+                            (blockLines.length > 1 && blockLines.some(l => /^\s*([-*•]|\d+\.)\s+/.test(l)));
+        if (isListBlock) {
+            return blockLines.join('\n');
+        }
+
+        // Keep sign-off blocks intact (e.g. "Best regards,\nBrahma Team")
+        const isSignoffBlock = /^(best regards|kind regards|regards|sincerely|thanks|thank you|warmly|yours truly|cheers|best|with love),?/i.test(blockLines[0]);
+        if (isSignoffBlock) {
+            return blockLines.join('\n');
+        }
+
+        // Otherwise join lines within the paragraph with a single space
+        return blockLines.join(' ');
+    });
+
+    cleaned = cleanedBlocks.filter(Boolean).join('\n\n');
+
     return cleaned.trim();
 }
 
@@ -103,6 +130,7 @@ ${context ? `\nUse the following research context to write the email:\n${context
 CRITICAL RULES:
 - NO ATTACHMENTS: Brahma does NOT support email attachments. Never write boilerplate placeholders like "Please find the report attached" or "I have attached the document". You MUST write and inline the actual research findings, report contents, or requested details directly inside the email body itself.
 - Ensure the email is self-contained, detailed, and contains the actual reports/findings.
+- NO UNNECESSARY MID-PARAGRAPH LINE BREAKS: Every paragraph must be a single continuous flowing text line without hard line wraps inside the paragraph. Line breaks must ONLY occur between separate paragraphs (using double line breaks \\n\\n), list items, salutation, and sign-off.
 
 MANDATORY OUTPUT FORMAT:
 Return ONLY the raw email body text.

@@ -5,7 +5,8 @@
 - standard: 2 searches max (entity research, news, tasks)
 
 ## Gate Rules
-- Unknown entities → ALWAYS research
+- Unknown entities → ALWAYS research (unless the entity is a raw email address being emailed or mentioned casually)
+- Raw email addresses → DO NOT flag for web research unless the user explicitly asks to research/investigate the person/email (e.g. "who owns...", "find background on...")
 - Time-sensitive entities (jobs, prices, news) → ALWAYS research
 - Well-known stable entities → ONLY if user asks about recent changes
 - Previously cached entities (within 1 hour) → SKIP
