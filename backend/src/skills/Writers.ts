@@ -12,7 +12,10 @@ export function sanitizeEmailText(rawText: string): string {
     cleaned = cleaned.replace(/```(?:[a-zA-Z0-9_-]+)?\n([\s\S]*?)```/g, '$1');
     cleaned = cleaned.replace(/```[\s\S]*?$/g, '');
 
-    // 3. Remove thinking process headers/blocks
+    // 3. Normalize line endings (\r\n -> \n)
+    cleaned = cleaned.replace(/\r\n/g, '\n');
+
+    // 4. Remove thinking process headers/blocks
     if (/^\s*(Here's a thinking process|Thinking Process|Thought Process|1\.\s*\*\*Analyze|Analyze User Input)/i.test(cleaned)) {
         const salutationMatch = cleaned.match(/\n\s*(?:Hey|Hi|Dear|Hello)\b[\s\S]*/i);
         if (salutationMatch) {
@@ -28,7 +31,7 @@ export function sanitizeEmailText(rawText: string): string {
         }
     }
 
-    // 4. Scan lines from start to find salutation or Subject line
+    // 5. Scan lines from start to find salutation or Subject line
     const lines = cleaned.split('\n');
     let contentStartIndex = 0;
     
@@ -48,10 +51,16 @@ export function sanitizeEmailText(rawText: string): string {
         cleaned = lines.slice(contentStartIndex).join('\n').trim();
     }
 
-    // 5. Remove dependency context markers or step outputs if leaked
+    // 6. Remove dependency context markers or step outputs if leaked
     cleaned = cleaned.replace(/--- Output from Step \d+ [\s\S]*?---/g, '');
 
-    // 6. Normalize Paragraphs & Remove Unnecessary Mid-Paragraph Line Breaks
+    // 7. Ensure double newlines after salutations if only single newline exists
+    cleaned = cleaned.replace(/^((?:Dear|Hi|Hello|Hey)\b[^\n,]+,?)\n(?!\n)/im, '$1\n\n');
+
+    // 8. Ensure double newlines before sign-offs if only single newline exists
+    cleaned = cleaned.replace(/\n(?!\n)((?:Best regards|Kind regards|Regards|Sincerely|Thanks|Thank you|Warmly|Yours truly|Cheers|Best|With love),?\n?.*)$/im, '\n\n$1');
+
+    // 9. Normalize Paragraphs & Remove Unnecessary Mid-Paragraph Line Breaks
     const blocks = cleaned.split(/\n\s*\n/);
     const cleanedBlocks = blocks.map(block => {
         const trimmed = block.trim();
@@ -59,9 +68,8 @@ export function sanitizeEmailText(rawText: string): string {
 
         const blockLines = trimmed.split('\n').map(l => l.trim()).filter(Boolean);
 
-        // Keep list blocks intact (lines starting with -, *, •, or numbered 1., 2.)
-        const isListBlock = blockLines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l)) || 
-                            (blockLines.length > 1 && blockLines.some(l => /^\s*([-*•]|\d+\.)\s+/.test(l)));
+        // Keep list blocks intact if EVERY line in the block is a list item (- or * or • or 1.)
+        const isListBlock = blockLines.every(l => /^\s*([-*•]|\d+\.)\s+/.test(l));
         if (isListBlock) {
             return blockLines.join('\n');
         }
@@ -72,7 +80,13 @@ export function sanitizeEmailText(rawText: string): string {
             return blockLines.join('\n');
         }
 
-        // Otherwise join lines within the paragraph with a single space
+        // Keep single line salutation intact (e.g. "Dear Yuvraj,")
+        const isSalutation = /^(dear|hi|hello|hey)\b/i.test(blockLines[0]) && blockLines.length === 1;
+        if (isSalutation) {
+            return blockLines[0];
+        }
+
+        // Otherwise join lines within the paragraph into a single continuous text string
         return blockLines.join(' ');
     });
 
