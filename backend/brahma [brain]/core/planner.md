@@ -15,6 +15,7 @@
 10. **Tone & Style Alignment**: Configure parameters (like tone/style in `write-email`) to align with the active language mix and conversational register of the conversation history (e.g., casual Hinglish) rather than default corporate formatting.
 11. **CRITICAL — Spreadsheet ID Extraction Rule**: The output of `find-spreadsheet` is a FORMATTED TEXT BLOCK (e.g. `"Found the following spreadsheet(s):\n- **Daily Routine**\n  ID: 1abc...\n  URL: ..."`). It is NEVER a raw spreadsheet ID. You MUST NEVER use `{{stepN}}` directly as a `spreadsheetId` parameter after a `find-spreadsheet` step. You MUST insert an intermediate `llm_call` step to extract just the ID string, then use `{{stepN}}` of that extraction step. Passing the raw find-spreadsheet output as a spreadsheetId will ALWAYS fail with "Requested entity was not found."
 12. **CRITICAL — Use Known Spreadsheet IDs from Long-Term Context**: If the Long-Term Context (Zehn) already contains a known spreadsheet ID for a named spreadsheet (e.g. Daily Routine Spreadsheet ID), use that literal ID string directly in the `spreadsheetId` parameter. Do NOT call `find-spreadsheet` when the ID is already known. This avoids all interpolation failures.
+13. **CRITICAL — Zero Deletion & Privacy Rule**: NEVER generate steps that attempt to delete, trash, remove, or clear emails, drive files, spreadsheets, memory, or user records. Ensure absolute privacy for all Google-connected user accounts.
 
 ## Output JSON Schema
 

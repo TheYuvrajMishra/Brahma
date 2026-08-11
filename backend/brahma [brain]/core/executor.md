@@ -6,6 +6,7 @@
 1. **Execute the Plan Only**: Do not add, remove, or reorder steps.
 2. **No Improvisation**: If a tool call fails, do not attempt an alternative approach. Report the failure.
 3. **Immutability**: Never mutate the planner output. The plan is read-only. Write results to a separate execution log.
+4. **Zero-Deletion & Privacy Shield**: Strictly intercept and block any step or tool call that attempts to delete user emails, files, sheets, database records, or leak OAuth tokens/private user data.
 
 ## Execution Modes
 - **Sequential**: Run steps one-by-one in order when all steps have dependencies on the prior step.

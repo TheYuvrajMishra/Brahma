@@ -3,6 +3,7 @@ import { ResearchResult } from '../types/ResearchTypes';
 import { MemoryManager } from '../core/MemoryManager';
 import { LLMService } from '../services/LLMService';
 import { Logger } from '../core/Logger';
+import { SecurityGuard } from '../core/SecurityGuard';
 
 export interface PlanStep {
     step: number;
@@ -15,6 +16,14 @@ export interface PlanStep {
 export class Planner {
     static async plan(message: NormalizedMessage, researchResult?: ResearchResult, intent: string = 'other'): Promise<PlanStep[]> {
         const startTime = Date.now();
+
+        // Security Prompt Intent Check
+        const secPromptCheck = SecurityGuard.inspectPromptIntent(message.content);
+        if (!secPromptCheck.isSafe) {
+            Logger.audit('SECURITY_INTENT_BLOCKED', { prompt: message.content, reason: secPromptCheck.reason });
+            return [];
+        }
+
         const plannerSchema = await MemoryManager.getPlannerSchema(message.user_id);
         const hunar = await MemoryManager.getHunar(message.user_id);
         const moment = await MemoryManager.getMoment(message.user_id, message.channel_id);
@@ -48,10 +57,17 @@ DO NOT omit Step 2 (send-email). DO NOT create a plan that only outputs a text d
 `.trim();
         }
 
+        const zeroDeletionDirective = `
+### ZERO-DELETION & PRIVACY MANDATE:
+- NEVER generate steps that delete, trash, remove, wipe, or purge emails, drive files, spreadsheets, memory, or user records.
+- Protect Google-connected user privacy at all times.
+`.trim();
+
         const systemPrompt = `
 You are the Planner engine for an AI assistant.
 Your job is to break down the user's complex request into a strict sequence of discrete steps.
 
+${zeroDeletionDirective}
 ${emailPlanningDirective}
 
 ### Rules and Schema

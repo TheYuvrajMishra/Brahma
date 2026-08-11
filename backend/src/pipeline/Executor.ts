@@ -3,6 +3,7 @@ import { Logger } from '../core/Logger';
 import { NormalizedMessage } from '../types/Message';
 import { SkillRegistry } from '../core/SkillRegistry';
 import { EventBus, SystemEvents } from '../core/EventBus';
+import { SecurityGuard } from '../core/SecurityGuard';
 
 export interface ExecutionResult {
     step: number;
@@ -17,9 +18,23 @@ export class Executor {
         const results: ExecutionResult[] = [];
         const completedSteps = new Set<number>();
 
-        Logger.info('Executor', message.message_id, 0, 'START', { total_steps: plan.length });
+        Logger.info('Executor', message.message_id, 0, 'START', { total_steps: plan.length, security_shield: 'ACTIVE' });
 
         for (const step of plan) {
+            // Security Guard Pre-Check
+            const secCheck = SecurityGuard.validateToolCall(step.tool, step.params);
+            if (!secCheck.isSafe) {
+                Logger.error('Executor', message.message_id, `Step ${step.step} blocked by SecurityGuard: ${secCheck.reason}`);
+                results.push({
+                    step: step.step,
+                    action: step.action,
+                    tool: step.tool,
+                    status: 'failed',
+                    output: `[SECURITY GUARD BLOCKED] ${secCheck.reason}`
+                });
+                continue;
+            }
+
             // Check dependencies
             const missingDeps = step.depends_on.filter(dep => !completedSteps.has(dep));
             if (missingDeps.length > 0) {

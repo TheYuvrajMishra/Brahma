@@ -9,6 +9,7 @@
   "scripts": {
     "test": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tests/test-e2e-flow.ts",
     "test:e2e": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tests/test-e2e-flow.ts",
+    "test:security": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tests/test-security-guard.ts",
     "test:composer": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tests/test-composer.ts",
     "test:converter": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tests/test-converter-dryrun.ts",
     "test:email": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tests/test-email.ts",

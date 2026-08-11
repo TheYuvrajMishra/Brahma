@@ -1,5 +1,6 @@
 import { ISkill } from '../types/Skill';
 import { Logger } from './Logger';
+import { SecurityGuard } from './SecurityGuard';
 import { WebSearch } from '../skills/WebSearch';
 import { LlmCall } from '../skills/LlmCall';
 import { WriteBlog, WriteEmail } from '../skills/Writers';
@@ -30,6 +31,12 @@ class SkillRegistryClass {
     }
 
     async runSkill(toolName: string, params: any): Promise<string> {
+        const securityCheck = SecurityGuard.validateToolCall(toolName, params);
+        if (!securityCheck.isSafe) {
+            Logger.audit('TOOL_SECURITY_BLOCKED', { tool: toolName, reason: securityCheck.reason });
+            throw new Error(securityCheck.reason || 'Security Violation: Tool execution blocked by Zero-Deletion & Privacy Shield.');
+        }
+
         const skill = this.skills.get(toolName);
         if (!skill) {
             throw new Error(`Skill not found: ${toolName}`);

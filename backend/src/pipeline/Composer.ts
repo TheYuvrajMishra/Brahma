@@ -3,6 +3,7 @@ import { ResearchResult } from '../types/ResearchTypes';
 import { MemoryManager } from '../core/MemoryManager';
 import { LLMService } from '../services/LLMService';
 import { ExecutionResult } from './Executor';
+import { SecurityGuard } from '../core/SecurityGuard';
 
 const MARKDOWN_HIERARCHY_PROMPT = `
 ### Response Formatting & Visual Hierarchy Guidelines
@@ -14,7 +15,8 @@ Format your response using clean Markdown structure and a clear visual hierarchy
 - **Callouts & Highlights**: Use blockquotes (> summary or key takeaway) for key highlights or executive summaries.
 - **Code & Tables**: Use fenced code blocks with language identifiers for all code/commands, and Markdown tables for structured comparison data.
 
-### CRITICAL IDENTITY & CAPABILITY RULES:
+### CRITICAL SECURITY & IDENTITY RULES:
+- **Zero-Deletion & Privacy Guarantee**: Brahma operates with an active Zero-Deletion and Privacy Protection Shield. Connected user data, emails, spreadsheets, and files can NEVER be deleted, purged, or compromised.
 - Brahma HAS full automated Gmail sending integration through the \`send-email\` tool. NEVER state "I do not have direct email-sending capabilities", "I cannot send that email for you", or "I provide drafts for manual copy-paste".
 - If a \`send-email\` step executed in the Execution Results, state clearly and concisely that the email has been sent to the recipient.
 `.trim();
@@ -28,6 +30,8 @@ export class Composer {
         const moment = await MemoryManager.getMoment(message.user_id, message.channel_id);
         const rawZehn = await MemoryManager.getZehn(message.user_id);
         const zehn = MemoryManager.getFilteredZehn(rawZehn, intent, message.content, moment);
+
+        let responseContent = '';
         
         if (routeBucket === 'complex') {
             if (!executionLog) {
@@ -35,11 +39,14 @@ export class Composer {
                     const ctx = this.formatResearchContext(researchResult);
                     const prompt = `You are Brahma. Here is your personality:\n${soul}\n\n${MARKDOWN_HIERARCHY_PROMPT}\n\nPre-researched context:\n${ctx}\n\nUsing the context above, respond to the user. Cite sources with [1] notation only if factual. Be direct.`.trim();
                     const resp = await LLMService.chat(prompt, message.content);
-                    if (resp) return { originalMessage: message, content: resp };
+                    if (resp) {
+                        return { originalMessage: message, content: SecurityGuard.appendSecurityFooter(resp) };
+                    }
                 }
                 
                 const directResp = await LLMService.chat(`You are Brahma. Personality:\n${soul}\n\n${MARKDOWN_HIERARCHY_PROMPT}\n\nGive your best answer.`, message.content);
-                return { originalMessage: message, content: directResp || 'I understood that you wanted me to do a complex task, but I failed to generate a valid plan for it.' };
+                responseContent = directResp || 'I understood that you wanted me to do a complex task, but I failed to generate a valid plan for it.';
+                return { originalMessage: message, content: SecurityGuard.appendSecurityFooter(responseContent) };
             }
 
             const safeLog = executionLog.map(log => ({
@@ -78,10 +85,7 @@ Rules:
 `.trim();
 
             const finalResponse = await LLMService.chat(systemPrompt, message.content);
-            return {
-                originalMessage: message,
-                content: finalResponse || 'Task execution completed successfully.'
-            };
+            responseContent = finalResponse || 'Task execution completed successfully.';
         } else if (routeBucket === 'greeting') {
             const systemPrompt = `
 You are Brahma, an intelligent AI assistant runtime.
@@ -98,10 +102,7 @@ The user greeted you. Respond with a warm, natural, helpful greeting matching yo
 `.trim();
 
             const greetingResponse = await LLMService.chat(systemPrompt, message.content);
-            return {
-                originalMessage: message,
-                content: greetingResponse || 'Hello! How can I help you today?'
-            };
+            responseContent = greetingResponse || 'Hello! How can I help you today?';
         } else {
             // Simple bucket
             const researchCtx = this.formatResearchContext(researchResult);
@@ -123,11 +124,13 @@ Answer the user directly and accurately. Use your personality, memory, and resea
 `.trim();
 
             const simpleResponse = await LLMService.chat(systemPrompt, message.content);
-            return {
-                originalMessage: message,
-                content: simpleResponse || 'Understood.'
-            };
+            responseContent = simpleResponse || 'Understood.';
         }
+
+        return {
+            originalMessage: message,
+            content: SecurityGuard.appendSecurityFooter(responseContent)
+        };
     }
 
     private static formatResearchContext(researchResult?: ResearchResult): string {
