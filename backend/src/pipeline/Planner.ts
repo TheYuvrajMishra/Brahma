@@ -37,9 +37,22 @@ ${summaries}
 `;
         }
 
+        let emailPlanningDirective = '';
+        if (intent === 'email_request' || /(send|mail|email|bhej)/i.test(message.content)) {
+            emailPlanningDirective = `
+### MANDATORY EMAIL PLANNER DIRECTIVE:
+The user wants to send an email. You MUST generate a 2-step plan:
+Step 1: "tool": "write-email" to draft the body based on the context/user input.
+Step 2: "tool": "send-email" with "params": { "recipient": "<recipient_email_address>", "subject": "<descriptive_subject>", "body": "{{step1}}" }, "depends_on": [1] to send the email directly via Gmail API.
+DO NOT omit Step 2 (send-email). DO NOT create a plan that only outputs a text draft or copy-paste text.
+`.trim();
+        }
+
         const systemPrompt = `
 You are the Planner engine for an AI assistant.
 Your job is to break down the user's complex request into a strict sequence of discrete steps.
+
+${emailPlanningDirective}
 
 ### Rules and Schema
 ${plannerSchema}

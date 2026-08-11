@@ -84,15 +84,21 @@ export class Router {
             };
         }
 
-        // 2.5 Action verb intent determination with context checking
+        // 2.5 Action verb & email instruction determination with context checking
         const containsEmailAddress = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(text);
-        const hasExplicitEmailInstruction = /(^|\s)(send|mail|write|compose|dispatch)\s+(an?\s+)?(email|mail|msg|message)/i.test(text) ||
-                                            /(^|\s)send\s+[^\s]+@[^\s]+/i.test(text) ||
-                                            /(^|\s)(email|mail|msg)\s+to\s+/i.test(text);
+        const lowerMoment = moment.toLowerCase();
+        const isEmailFollowUp = (text === 'just mail' || text === 'send it' || text === 'mail it' || text === 'send now' || text.includes('bhej do') || text.includes('send email') || text.includes('send mail') || text === 'mail') &&
+                                (lowerMoment.includes('email') || lowerMoment.includes('mail') || lowerMoment.includes('draft'));
 
-        if (hasActionVerb && (!containsEmailAddress || hasExplicitEmailInstruction)) {
+        const hasExplicitEmailInstruction = /(^|\s)(send|mail|write|compose|dispatch)\s+(an?\s+)?(email|mail|msg|message)/i.test(text) ||
+                                            /(^|\s)send\s+([^\s]+@[^\s]+|to\s+)/i.test(text) ||
+                                            /(^|\s)(email|mail|msg)\s+to\s+/i.test(text) ||
+                                            /(^|\s)mail\s+[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i.test(text) ||
+                                            isEmailFollowUp;
+
+        if (hasExplicitEmailInstruction || (containsEmailAddress && hasActionVerb)) {
             let determinedIntent: RouteResult['intent'] = 'other';
-            if (hasExplicitEmailInstruction) {
+            if (hasExplicitEmailInstruction || containsEmailAddress) {
                 determinedIntent = 'email_request';
             } else if (text.includes('sheet') || text.includes('spreadsheet') || text.includes('excel') || text.includes('checkbox') || text.includes('checkboxes') || text.includes('routine') || text.includes('daily routine') || text.includes('column') || text.includes('row')) {
                 determinedIntent = 'spreadsheet_request';
@@ -102,12 +108,11 @@ export class Router {
                 determinedIntent = 'command_execution';
             }
 
-            // Only promote to complex if an actual explicit action instruction exists
             if (determinedIntent !== 'other') {
                 return {
                     bucket: 'complex',
                     rule_matched: 'rule_action_verb',
-                    confidence_score: 0.9,
+                    confidence_score: 0.95,
                     intent: determinedIntent
                 };
             }

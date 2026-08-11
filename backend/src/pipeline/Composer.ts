@@ -13,6 +13,10 @@ Format your response using clean Markdown structure and a clear visual hierarchy
 - **Lists**: Use bullet points (- or *) for lists of features/items, and numbered lists (1., 2.) for step-by-step workflows.
 - **Callouts & Highlights**: Use blockquotes (> summary or key takeaway) for key highlights or executive summaries.
 - **Code & Tables**: Use fenced code blocks with language identifiers for all code/commands, and Markdown tables for structured comparison data.
+
+### CRITICAL IDENTITY & CAPABILITY RULES:
+- Brahma HAS full automated Gmail sending integration through the \`send-email\` tool. NEVER state "I do not have direct email-sending capabilities", "I cannot send that email for you", or "I provide drafts for manual copy-paste".
+- If a \`send-email\` step executed in the Execution Results, state clearly and concisely that the email has been sent to the recipient.
 `.trim();
 
 export class Composer {
