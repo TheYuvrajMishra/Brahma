@@ -31,7 +31,7 @@ export const AuditTelemetryPage: React.FC = () => {
                         setError(null);
                     }
                 })
-                .catch(err => {
+                .catch(() => {
                     setLoading(false);
                 });
             return;

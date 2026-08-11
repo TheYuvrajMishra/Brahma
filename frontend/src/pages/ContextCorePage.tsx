@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { 
     PiListLight, 
@@ -17,27 +17,7 @@ export const ContextCorePage: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-    // ── Fetch file list on mount / connect ────────────────────────────
-    useEffect(() => {
-        if (!socket || !connected) return;
-        fetchFileList();
-    }, [socket, connected]);
-
-    const fetchFileList = () => {
-        socket.emit('brain:list', (res: any) => {
-            if (res.success) {
-                setFiles(res.files || []);
-                // Auto-select the first file if none is selected
-                if (res.files && res.files.length > 0 && !selectedFile) {
-                    selectFile(res.files[0]);
-                }
-            } else {
-                console.error('Failed to load brain file list:', res.error);
-            }
-        });
-    };
-
-    const selectFile = (filename: string) => {
+        const selectFile = useCallback((filename: string) => {
         if (!socket) return;
         setSelectedFile(filename);
         setSaveStatus('idle');
@@ -49,7 +29,26 @@ export const ContextCorePage: React.FC = () => {
                 console.error(`Failed to read file ${filename}:`, res.error);
             }
         });
-    };
+    }, [socket]);
+
+    const fetchFileList = useCallback(() => {
+        if (!socket) return;
+        socket.emit('brain:list', (res: any) => {
+            if (res.success) {
+                setFiles(res.files || []);
+                if (res.files && res.files.length > 0 && !selectedFile) {
+                    selectFile(res.files[0]);
+                }
+            } else {
+                console.error('Failed to load brain file list:', res.error);
+            }
+        });
+    }, [socket, selectedFile, selectFile]);
+
+    useEffect(() => {
+        if (!socket || !connected) return;
+        fetchFileList();
+    }, [socket, connected, fetchFileList]);
 
     const handleSave = () => {
         if (!socket || !selectedFile || isSaving) return;

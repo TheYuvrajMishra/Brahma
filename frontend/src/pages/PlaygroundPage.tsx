@@ -81,9 +81,9 @@ export const PlaygroundPage: React.FC = () => {
             } else {
                 setMessages([]);
             }
+            setIsTyping(false);
+            inputRef.current?.focus();
         });
-        setIsTyping(false);
-        inputRef.current?.focus();
     }, [socket, activeSessionId]);
 
     // ── Auto-scroll ───────────────────────────────────────────────────

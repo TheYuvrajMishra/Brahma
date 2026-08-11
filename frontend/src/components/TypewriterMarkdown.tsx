@@ -32,9 +32,11 @@ export const TypewriterMarkdown: React.FC<TypewriterMarkdownProps> = ({ content,
     useEffect(() => {
         // Reset if content changes completely
         if (!content.startsWith(displayedContent) && displayedContent !== '') {
-            setDisplayedContent('');
-            setCurrentIndex(0);
-            return;
+            const timer = setTimeout(() => {
+                setDisplayedContent('');
+                setCurrentIndex(0);
+            }, 0);
+            return () => clearTimeout(timer);
         }
 
         if (currentIndex < tokens.length) {
