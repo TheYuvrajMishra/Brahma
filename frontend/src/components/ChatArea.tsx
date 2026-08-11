@@ -12,7 +12,8 @@ import {
     PiPencilLight,
     PiArrowClockwiseLight,
     PiCaretLeftLight,
-    PiCaretRightLight
+    PiCaretRightLight,
+    PiShieldCheckLight
 } from 'react-icons/pi';
 import type { Message, MessageVariant, TelemetryStep } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
@@ -55,6 +56,14 @@ const WITTY_STATUS_PHRASES = [
     "parsing human magic..."
 ];
 
+const stripLegacySecurityFooter = (text: string) => {
+    if (!text) return '';
+    return text
+        .replace(/\n\n---\n🔒 \*\*Brahma Security Guarantee\*\*: Zero-Deletion & Privacy Shield Active\. Connected user accounts and data are 100% protected\./gi, '')
+        .replace(/\n\n---\n🔒 \*\*Brahma Security Guarantee\*\*:[^\n]*/gi, '')
+        .trim();
+};
+
 const formatISTTime = (isoDateStr?: string) => {
     try {
         const date = isoDateStr ? new Date(isoDateStr) : new Date();
@@ -96,7 +105,7 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(content);
+        navigator.clipboard.writeText(stripLegacySecurityFooter(content));
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -177,6 +186,27 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
                     >
                         <PiCaretRightLight className="w-3 h-3" />
                     </button>
+                </div>
+            )}
+
+            {/* Security Guarantee Shield Icon Tooltip */}
+            {!isUser && (
+                <div className="relative group/shield flex items-center cursor-pointer ml-1">
+                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30 transition-all duration-200">
+                        <PiShieldCheckLight className="w-3 h-3 text-emerald-400 shrink-0" />
+                        <span className="text-[9px] font-medium tracking-tight">Shield Active</span>
+                    </div>
+
+                    {/* Hover Tooltip Card */}
+                    <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/shield:flex flex-col w-64 p-2.5 rounded-lg bg-zinc-900 border border-emerald-500/30 shadow-xl backdrop-blur-md z-50 pointer-events-none transition-all duration-150">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs mb-1">
+                            <PiShieldCheckLight className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>Brahma Security Guarantee</span>
+                        </div>
+                        <p className="text-[10.5px] text-zinc-300 leading-relaxed font-sans">
+                            Zero-Deletion & Privacy Shield Active. Connected user accounts and data are 100% protected.
+                        </p>
+                    </div>
                 </div>
             )}
         </div>
@@ -430,7 +460,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                         <div className="markdown-body select-text text-zinc-100 leading-relaxed font-sans w-full">
                                             {msg.isNew ? (
                                                 <TypewriterMarkdown 
-                                                    content={msg.content} 
+                                                    content={stripLegacySecurityFooter(msg.content)} 
                                                     onUpdate={() => {
                                                         const container = messagesEndRef.current?.parentElement;
                                                         if (container) {
@@ -439,7 +469,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                                     }}
                                                 />
                                             ) : (
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</ReactMarkdown>
+                                                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{stripLegacySecurityFooter(msg.content)}</ReactMarkdown>
                                             )}
                                         </div>
                                         <div className="opacity-0 group-hover/msg:opacity-100 transition-opacity duration-300">

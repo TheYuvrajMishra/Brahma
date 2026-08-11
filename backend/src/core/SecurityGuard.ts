@@ -8,19 +8,19 @@ export interface SecurityCheckResult {
 
 export class SecurityGuard {
     private static readonly FORBIDDEN_DELETION_PATTERNS = [
-        /\bdelete\b/i,
-        /\bremove\b/i,
-        /\btrash\b/i,
-        /\bdestroy\b/i,
-        /\bpurge\b/i,
-        /\berase\b/i,
-        /\bwipe\b/i,
-        /\bdrop\b/i,
-        /\bclear_all\b/i,
-        /\bunlink\b/i,
-        /\bhatao\b/i, // Hinglish for remove/delete
+        /\bdelete/i,
+        /\bremove/i,
+        /\btrash/i,
+        /\bdestroy/i,
+        /\bpurge/i,
+        /\berase/i,
+        /\bwipe/i,
+        /\bdrop/i,
+        /\bclear_all/i,
+        /\bunlink/i,
+        /\bhatao/i, // Hinglish for remove/delete
         /\bhata\b/i,
-        /\bmitao\b/i  // Hinglish for erase/delete
+        /\bmitao/i  // Hinglish for erase/delete
     ];
 
     private static readonly FORBIDDEN_DELETION_TOOLS = [
@@ -51,15 +51,13 @@ export class SecurityGuard {
             };
         }
 
-        // 2. Check parameters for explicit deletion intent or flags
-        if (params && typeof params === 'object') {
+        // 2. Check parameters for explicit deletion intent or flags (except internal safe styling tools)
+        if (params && typeof params === 'object' && lowerTool !== 'replace-banding') {
             const paramsString = JSON.stringify(params).toLowerCase();
-            const hasDeletionAction = params.action && typeof params.action === 'string' &&
-                this.FORBIDDEN_DELETION_PATTERNS.some(pat => pat.test(params.action));
-            
+            const hasDeletionPattern = this.FORBIDDEN_DELETION_PATTERNS.some(pat => pat.test(paramsString));
             const hasDeleteParam = params.delete === true || params.remove === true || params.purge === true || params.trash === true;
 
-            if (hasDeletionAction || hasDeleteParam) {
+            if (hasDeletionPattern || hasDeleteParam) {
                 Logger.audit('SECURITY_VIOLATION_BLOCKED', {
                     tool: toolName,
                     params,
@@ -116,14 +114,14 @@ export class SecurityGuard {
     }
 
     /**
-     * Attaches the mandatory security guarantee badge to the bottom of outgoing response content.
+     * Ensures clean content output without appending raw repetitive text footers into message bodies.
      */
     static appendSecurityFooter(content: string): string {
-        if (!content) return this.SECURITY_FOOTER.trim();
-        if (content.includes('🔒 **Brahma Security Guarantee**') || content.includes('🔒 **Brahma Security Shield**')) {
-            return content;
-        }
-        return `${content}${this.SECURITY_FOOTER}`;
+        if (!content) return '';
+        return content
+            .replace(/\n\n---\n🔒 \*\*Brahma Security Guarantee\*\*: Zero-Deletion & Privacy Shield Active\. Connected user accounts and data are 100% protected\./gi, '')
+            .replace(/\n\n---\n🔒 \*\*Brahma Security Guarantee\*\*:[^\n]*/gi, '')
+            .trim();
     }
 
     /**

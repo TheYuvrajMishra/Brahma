@@ -76,10 +76,10 @@ async function runTests() {
     const execResults = await Executor.execute(badPlan, dummyMsg as any);
     assert(execResults[0].status === 'failed' && execResults[0].output.includes('[SECURITY GUARD BLOCKED]'), 'Executor blocks forbidden deletion step');
 
-    // Test 8: Security footer appending in Composer output
-    const rawOutput = "Here is your requested response.";
+    // Test 8: Security footer processing in output
+    const rawOutput = "Here is your requested response.\n\n---\n🔒 **Brahma Security Guarantee**: Zero-Deletion & Privacy Shield Active. Connected user accounts and data are 100% protected.";
     const footerOutput = SecurityGuard.appendSecurityFooter(rawOutput);
-    assert(footerOutput.includes('🔒 **Brahma Security Guarantee**'), 'SecurityGuard appends security badge to response');
+    assert(!footerOutput.includes('---'), 'SecurityGuard strips raw text footer clutter from response text');
 
     // Test 9: Security prompt inspection for bulk deletion attempts
     const res7 = SecurityGuard.inspectPromptIntent('delete all my gmail inbox emails');
