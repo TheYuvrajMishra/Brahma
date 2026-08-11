@@ -8,6 +8,158 @@ interface ProcessTelemetryAccordionProps {
     defaultExpanded?: boolean;
 }
 
+const parseDetailsData = (details: any): any => {
+    if (!details) return null;
+    if (typeof details === 'object') return details;
+    if (typeof details === 'string') {
+        const trimmed = details.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+            try {
+                return JSON.parse(trimmed);
+            } catch {
+                return details;
+            }
+        }
+    }
+    return details;
+};
+
+const FormattedTelemetryDetails: React.FC<{ details: any }> = ({ details }) => {
+    const [showRaw, setShowRaw] = useState(false);
+    const parsed = parseDetailsData(details);
+
+    if (!parsed) return null;
+
+    const renderKeyValuePills = (obj: Record<string, any>) => {
+        const entries = Object.entries(obj).filter(([k, v]) => v !== undefined && v !== null && k !== '_dependency_context');
+        if (entries.length === 0) return null;
+
+        return (
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {entries.map(([key, val]) => {
+                    const isLong = typeof val === 'string' && val.length > 50;
+                    const displayVal = typeof val === 'object' 
+                        ? JSON.stringify(val) 
+                        : isLong ? `${val.substring(0, 50)}...` : String(val);
+
+                    return (
+                        <div key={key} className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-white/[0.04] border border-white/[0.07] text-[11px] font-mono text-zinc-300">
+                            <span className="text-zinc-500 font-sans font-medium text-[10px] uppercase tracking-wider">{key}:</span>
+                            <span className="text-zinc-200 truncate max-w-[240px]" title={String(val)}>{displayVal}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    };
+
+    // Case 1: Array of DAG Plan Steps
+    if (Array.isArray(parsed)) {
+        return (
+            <div className="mt-1.5 space-y-2">
+                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                    <span>Execution Plan ({parsed.length} Steps)</span>
+                    <button
+                        type="button"
+                        onClick={() => setShowRaw(!showRaw)}
+                        className="hover:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                        {showRaw ? 'Hide Raw' : 'Raw JSON'}
+                    </button>
+                </div>
+
+                {showRaw ? (
+                    <pre className="p-2.5 rounded-xl bg-zinc-950/80 border border-white/10 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-48">
+                        {JSON.stringify(parsed, null, 2)}
+                    </pre>
+                ) : (
+                    <div className="space-y-1.5">
+                        {parsed.map((stepItem: any, idx: number) => (
+                            <div key={idx} className="p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] font-semibold">
+                                            Step {stepItem.step || idx + 1}
+                                        </span>
+                                        <span className="text-[11px] font-medium text-zinc-200">
+                                            {stepItem.action || stepItem.tool}
+                                        </span>
+                                    </div>
+                                    {stepItem.tool && (
+                                        <span className="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono text-[10px]">
+                                            {stepItem.tool}
+                                        </span>
+                                    )}
+                                </div>
+                                {stepItem.params && renderKeyValuePills(stepItem.params)}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Case 2: Structured Object
+    if (typeof parsed === 'object') {
+        const hasTool = parsed.tool || parsed.intent || parsed.action;
+        return (
+            <div className="mt-1.5 space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
+                    <span>Step Parameters</span>
+                    <button
+                        type="button"
+                        onClick={() => setShowRaw(!showRaw)}
+                        className="hover:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                        {showRaw ? 'Hide Raw' : 'Raw JSON'}
+                    </button>
+                </div>
+
+                {showRaw ? (
+                    <pre className="p-2.5 rounded-xl bg-zinc-950/80 border border-white/10 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-48">
+                        {JSON.stringify(parsed, null, 2)}
+                    </pre>
+                ) : (
+                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
+                        {hasTool && (
+                            <div className="flex items-center gap-2">
+                                {parsed.tool && (
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono text-[10px] font-medium">
+                                        Tool: {parsed.tool}
+                                    </span>
+                                )}
+                                {parsed.intent && (
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[10px] font-medium">
+                                        Intent: {parsed.intent}
+                                    </span>
+                                )}
+                                {parsed.status && (
+                                    <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-medium ${
+                                        parsed.status === 'success' 
+                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                    }`}>
+                                        {parsed.status}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                        {parsed.params ? renderKeyValuePills(parsed.params) : renderKeyValuePills(parsed)}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Case 3: Plain Text / String
+    return (
+        <div className="mt-1.5 p-2 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap max-h-44 overflow-y-auto select-text">
+            {String(parsed)}
+        </div>
+    );
+};
+
 export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps> = ({
     telemetry,
     isLive = false,
@@ -96,9 +248,7 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
 
                             {activeStep?.details && (
                                 <div className="pl-5 pt-1">
-                                    <pre className="p-2.5 rounded-lg bg-zinc-950/90 border border-white/5 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-44">
-                                        {typeof activeStep.details === 'string' ? activeStep.details : JSON.stringify(activeStep.details, null, 2)}
-                                    </pre>
+                                    <FormattedTelemetryDetails details={activeStep.details} />
                                 </div>
                             )}
                         </div>
@@ -135,14 +285,9 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                                         </div>
 
                                         {step.details && (
-                                            <details className="pl-5 mt-1">
-                                                <summary className="text-[10px] text-zinc-500 cursor-pointer hover:text-zinc-300 transition-colors">
-                                                    View step payload
-                                                </summary>
-                                                <pre className="mt-1.5 p-2.5 rounded-lg bg-zinc-950/90 border border-white/5 text-[10px] text-zinc-300 overflow-x-auto whitespace-pre-wrap font-mono max-h-44">
-                                                    {typeof step.details === 'string' ? step.details : JSON.stringify(step.details, null, 2)}
-                                                </pre>
-                                            </details>
+                                            <div className="pl-5 pt-1">
+                                                <FormattedTelemetryDetails details={step.details} />
+                                            </div>
                                         )}
                                     </div>
                                 );
