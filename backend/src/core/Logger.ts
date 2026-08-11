@@ -23,17 +23,28 @@ export class Logger {
         console.error(JSON.stringify(logEntry));
     }
 
-    static audit(action: string, details: any) {
+    static audit(action: string, details: any = {}) {
+        const userId = details?.userId || details?._user_id || details?.user_id;
         const logEntry = {
             timestamp: new Date().toISOString(),
             level: 'AUDIT',
             action,
-            details
+            details,
+            userId
         };
         const logString = JSON.stringify(logEntry) + '\n';
         console.log(logString.trim());
+        
         try {
-            require('fs').appendFileSync(require('path').join(__dirname, '../../audit.log'), logString);
+            const fs = require('fs');
+            const path = require('path');
+            fs.appendFileSync(path.join(__dirname, '../../audit.log'), logString);
+
+            if (userId) {
+                const { MemoryManager } = require('./MemoryManager');
+                const userBrainPath = MemoryManager.getUserBrainPath(userId);
+                fs.appendFileSync(path.join(userBrainPath, 'audit.log'), logString);
+            }
         } catch (err) {
             console.error('Failed to write to audit log:', err);
         }

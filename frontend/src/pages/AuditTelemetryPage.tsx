@@ -21,37 +21,58 @@ export const AuditTelemetryPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const fetchLogs = useCallback(() => {
-        if (!socket || !connected) return;
-        
+        if (!socket || !connected) {
+            fetch('/api/logs', { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    setLoading(false);
+                    if (data.success) {
+                        setLogs(data.logs || []);
+                        setError(null);
+                    }
+                })
+                .catch(err => {
+                    setLoading(false);
+                });
+            return;
+        }
+
         socket.emit('logs:read', (res: any) => {
             setLoading(false);
-            if (res.success) {
+            if (res && res.success) {
                 setLogs(res.logs || []);
                 setError(null);
             } else {
-                console.error('Failed to load audit logs:', res.error);
-                setError(res.error || 'Unknown error');
+                fetch('/api/logs', { credentials: 'include' })
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success) {
+                            setLogs(data.logs || []);
+                            setError(null);
+                        } else {
+                            setError(res?.error || 'Failed to load logs');
+                        }
+                    })
+                    .catch(() => {
+                        setError(res?.error || 'Failed to load logs');
+                    });
             }
         });
     }, [socket, connected]);
 
     // Fetch logs on mount and when connection status changes
     useEffect(() => {
-        if (connected && socket) {
-            fetchLogs();
-        }
+        fetchLogs();
     }, [connected, socket, fetchLogs]);
 
     // Set up polling interval to auto-refresh logs
     useEffect(() => {
-        if (!connected || !socket) return;
-        
         const interval = setInterval(() => {
             fetchLogs();
         }, 3000);
 
         return () => clearInterval(interval);
-    }, [connected, socket, fetchLogs]);
+    }, [fetchLogs]);
 
     const formatTimestamp = (ts: string) => {
         try {

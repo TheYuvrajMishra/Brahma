@@ -66,12 +66,12 @@ export class Executor {
                     
                     output = await SkillRegistry.runSkill(step.tool, paramsToRun);
                     
-                    Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: interpolatedParams, outputLength: output.length, status: 'success' });
+                    Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: interpolatedParams, outputLength: output.length, status: 'success', userId: message.user_id });
                     EventBus.emit(SystemEvents.STEP_EXECUTION_COMPLETE, { message, step, status: 'success', outputSummary: output.substring(0, 150) });
                     
                     success = true;
                 } catch (err) {
-                    Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: step.params, error: String(err), status: 'failed' });
+                    Logger.audit('TOOL_EXECUTION', { tool: step.tool, params: step.params, error: String(err), status: 'failed', userId: message.user_id });
                     Logger.error('Executor', message.message_id, `Attempt ${attempts} failed for step ${step.step}: ${err}`);
                 }
             }

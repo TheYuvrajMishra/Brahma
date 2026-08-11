@@ -441,6 +441,53 @@ export class PlaygroundAdapter implements Adapter {
             }
         });
 
+        app.get('/api/logs', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) {
+                return res.status(401).json({ success: false, error: 'Unauthorized', logs: [] });
+            }
+            try {
+                const userBrainPath = MemoryManager.getUserBrainPath(userId);
+                const userLogPath = path.join(userBrainPath, 'audit.log');
+                const globalLogPath = path.join(__dirname, '../../audit.log');
+
+                let rawContent = '';
+                if (fs.existsSync(userLogPath)) {
+                    rawContent = await fs.promises.readFile(userLogPath, 'utf-8');
+                } else if (fs.existsSync(globalLogPath)) {
+                    const globalContent = await fs.promises.readFile(globalLogPath, 'utf-8');
+                    const lines = globalContent.split('\n').filter(Boolean);
+                    const userLines = lines.filter(line => {
+                        try {
+                            const parsed = JSON.parse(line);
+                            return parsed.userId === userId || parsed.details?.userId === userId;
+                        } catch {
+                            return false;
+                        }
+                    });
+                    rawContent = userLines.join('\n');
+                }
+
+                const lines = rawContent.split('\n').map(l => l.trim()).filter(Boolean);
+                const parsedLogs = lines.map(line => {
+                    try {
+                        return JSON.parse(line);
+                    } catch {
+                        return {
+                            timestamp: new Date().toISOString(),
+                            level: 'INFO',
+                            action: 'RAW_LOG',
+                            details: line
+                        };
+                    }
+                }).reverse();
+
+                res.json({ success: true, logs: parsedLogs });
+            } catch (err: any) {
+                res.status(500).json({ success: false, error: err.message, logs: [] });
+            }
+        });
+
         // ── WebSocket Communication ──────────────────────────────────
 
         this.io.on('connection', (socket: Socket) => {
@@ -448,6 +495,55 @@ export class PlaygroundAdapter implements Adapter {
             if (userId) {
                 socket.data.userId = userId;
             }
+
+            socket.on('logs:read', async (callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated', logs: [] });
+                    return;
+                }
+                try {
+                    const userBrainPath = MemoryManager.getUserBrainPath(activeUserId);
+                    const userLogPath = path.join(userBrainPath, 'audit.log');
+                    const globalLogPath = path.join(__dirname, '../../audit.log');
+
+                    let rawContent = '';
+                    if (fs.existsSync(userLogPath)) {
+                        rawContent = await fs.promises.readFile(userLogPath, 'utf-8');
+                    } else if (fs.existsSync(globalLogPath)) {
+                        const globalContent = await fs.promises.readFile(globalLogPath, 'utf-8');
+                        const lines = globalContent.split('\n').filter(Boolean);
+                        const userLines = lines.filter(line => {
+                            try {
+                                const parsed = JSON.parse(line);
+                                return parsed.userId === activeUserId || parsed.details?.userId === activeUserId;
+                            } catch {
+                                return false;
+                            }
+                        });
+                        rawContent = userLines.join('\n');
+                    }
+
+                    const lines = rawContent.split('\n').map(l => l.trim()).filter(Boolean);
+                    const parsedLogs = lines.map(line => {
+                        try {
+                            return JSON.parse(line);
+                        } catch {
+                            return {
+                                timestamp: new Date().toISOString(),
+                                level: 'INFO',
+                                action: 'RAW_LOG',
+                                details: line
+                            };
+                        }
+                    }).reverse();
+
+                    if (callback) callback({ success: true, logs: parsedLogs });
+                } catch (err: any) {
+                    console.error('[Playground] logs:read failed:', err);
+                    if (callback) callback({ success: false, error: err.message, logs: [] });
+                }
+            });
 
             socket.on('google:status', async (callback?: (data: any) => void) => {
                 const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
