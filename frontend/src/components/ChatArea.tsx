@@ -191,19 +191,22 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
 
             {/* Security Guarantee Shield Icon Tooltip */}
             {!isUser && (
-                <div className="relative group/shield flex items-center cursor-pointer ml-1">
-                    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 hover:border-emerald-500/30 transition-all duration-200">
-                        <PiShieldCheckLight className="w-3 h-3 text-emerald-400 shrink-0" />
-                        <span className="text-[9px] font-medium tracking-tight">Shield Active</span>
-                    </div>
+                <div className="relative group/shield flex items-center">
+                    <button
+                        type="button"
+                        className="hover:text-zinc-300 transition-colors flex items-center cursor-pointer"
+                        title="Brahma Security Guarantee: Zero-Deletion & Privacy Shield Active. Connected user accounts and data are 100% protected."
+                    >
+                        <PiShieldCheckLight className="w-3 h-3" />
+                    </button>
 
-                    {/* Hover Tooltip Card */}
-                    <div className="absolute bottom-full left-0 mb-1.5 hidden group-hover/shield:flex flex-col w-64 p-2.5 rounded-lg bg-zinc-900 border border-emerald-500/30 shadow-xl backdrop-blur-md z-50 pointer-events-none transition-all duration-150">
-                        <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs mb-1">
-                            <PiShieldCheckLight className="w-4 h-4 text-emerald-400 shrink-0" />
+                    {/* Subtle Hover Tooltip Card */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover/shield:flex flex-col w-60 p-2.5 rounded-lg bg-zinc-900/95 border border-zinc-800 shadow-xl backdrop-blur-md z-50 pointer-events-none transition-all duration-150">
+                        <div className="flex items-center gap-1.5 text-zinc-200 font-medium text-[11px] mb-1">
+                            <PiShieldCheckLight className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                             <span>Brahma Security Guarantee</span>
                         </div>
-                        <p className="text-[10.5px] text-zinc-300 leading-relaxed font-sans">
+                        <p className="text-[10px] text-zinc-400 leading-relaxed font-sans">
                             Zero-Deletion & Privacy Shield Active. Connected user accounts and data are 100% protected.
                         </p>
                     </div>
