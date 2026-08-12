@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { PiTerminalLight } from 'react-icons/pi';
 
 interface AuthScreenProps {
@@ -121,10 +122,18 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     </button>
                 </div>
 
-                <div className="mt-8 text-[10px] font-mono text-zinc-500">
-                    Encrypted OAuth Tokens • Multi-Tenant Isolated Sessions
+                <div className="mt-6 flex flex-col items-center gap-2">
+                    <div className="text-[10px] font-mono text-zinc-500">
+                        Encrypted OAuth Tokens • Multi-Tenant Isolated Sessions
+                    </div>
+                    <div className="flex items-center gap-2.5 text-[11px] text-zinc-400 font-sans">
+                        <Link to="/privacy" target="_blank" className="hover:text-emerald-400 underline transition-colors">Privacy Policy</Link>
+                        <span className="text-zinc-600">•</span>
+                        <Link to="/terms" target="_blank" className="hover:text-emerald-400 underline transition-colors">Terms of Service</Link>
+                    </div>
                 </div>
             </motion.div>
         </div>
     );
 };
+

@@ -265,8 +265,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
             </div>
 
-            {/* Bottom Content Group (CTA Button) */}
-            <div className="pt-4 mt-auto">
+            {/* Bottom Content Group (CTA Button & Legal Links) */}
+            <div className="pt-4 mt-auto flex flex-col gap-3">
                 <button 
                     onClick={createNewSession} 
                     className="cta-pill-button w-full active:scale-[0.98]"
@@ -276,6 +276,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         <PiPlusLight className="w-4 h-4 text-black" />
                     </div>
                 </button>
+
+                <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-500 font-mono">
+                    <Link to="/privacy" target="_blank" className="hover:text-zinc-300 transition-colors">Privacy</Link>
+                    <span>•</span>
+                    <Link to="/terms" target="_blank" className="hover:text-zinc-300 transition-colors">Terms</Link>
+                </div>
             </div>
         </div>
     );
