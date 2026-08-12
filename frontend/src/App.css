@@ -17,7 +17,7 @@ body {
   background-color: var(--bg-dark);
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ── Global Mesh Gradients (Ambient Atmospheric Depth) ── */
