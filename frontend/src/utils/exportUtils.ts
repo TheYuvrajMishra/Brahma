@@ -1,5 +1,5 @@
-import html2pdf from 'html2pdf.js';
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export const downloadAsMarkdown = (content: string, filename = 'response.md') => {
     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
@@ -31,9 +31,10 @@ export const downloadAsPDF = async (
     filename = 'response.pdf'
 ) => {
     const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
+    tempContainer.style.position = 'fixed';
     tempContainer.style.top = '0';
+    tempContainer.style.left = '0';
+    tempContainer.style.zIndex = '-9999';
     tempContainer.style.width = '750px';
     tempContainer.style.backgroundColor = '#ffffff';
     tempContainer.style.color = '#111827';
@@ -41,6 +42,7 @@ export const downloadAsPDF = async (
     tempContainer.style.fontFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     tempContainer.style.fontSize = '14px';
     tempContainer.style.lineHeight = '1.6';
+    tempContainer.style.boxSizing = 'border-box';
 
     const header = document.createElement('div');
     header.style.display = 'flex';
@@ -55,7 +57,7 @@ export const downloadAsPDF = async (
     brand.style.fontWeight = '700';
     brand.style.letterSpacing = '0.05em';
     brand.style.color = '#111827';
-    brand.innerText = 'BRAHMA SYSTEM';
+    brand.innerText = 'BRAHMA SYSTEM AI RESPONSE';
 
     const dateStr = document.createElement('div');
     dateStr.style.fontSize = '11px';
@@ -76,9 +78,8 @@ export const downloadAsPDF = async (
 
         bodyContent.appendChild(clone);
     } else {
-        const p = document.createElement('pre');
+        const p = document.createElement('div');
         p.style.whiteSpace = 'pre-wrap';
-        p.style.fontFamily = 'inherit';
         p.innerText = content;
         bodyContent.appendChild(p);
     }
@@ -87,18 +88,18 @@ export const downloadAsPDF = async (
 
     const styleEl = document.createElement('style');
     styleEl.innerHTML = `
-        .pdf-markdown-body { color: #1f2937 !important; }
-        .pdf-markdown-body * { color: inherit !important; background-color: transparent !important; border-color: #e5e7eb !important; text-shadow: none !important; box-shadow: none !important; }
+        .pdf-markdown-body { color: #111827 !important; background-color: #ffffff !important; }
+        .pdf-markdown-body * { color: #111827 !important; background-color: transparent !important; border-color: #e5e7eb !important; text-shadow: none !important; box-shadow: none !important; }
         .pdf-markdown-body h1 { font-size: 22px !important; font-weight: 800 !important; margin-top: 18px !important; margin-bottom: 10px !important; color: #111827 !important; border-bottom: 1px solid #e5e7eb !important; padding-bottom: 6px !important; }
-        .pdf-markdown-body h2 { font-size: 18px !important; font-weight: 700 !important; margin-top: 16px !important; margin-bottom: 8px !important; color: #111827 !important; }
+        .pdf-markdown-body h2 { font-size: 18px !important; font-weight: 700 !important; margin-top: 16px !important; margin-bottom: 8px !important; color: #111827 !important; border-bottom: 1px solid #f3f4f6 !important; padding-bottom: 4px !important; }
         .pdf-markdown-body h3 { font-size: 16px !important; font-weight: 600 !important; margin-top: 14px !important; margin-bottom: 6px !important; color: #111827 !important; }
         .pdf-markdown-body p { margin-bottom: 12px !important; color: #374151 !important; line-height: 1.65 !important; }
         .pdf-markdown-body ul, .pdf-markdown-body ol { margin-top: 6px !important; margin-bottom: 12px !important; padding-left: 24px !important; }
         .pdf-markdown-body li { margin-bottom: 4px !important; color: #374151 !important; }
-        .pdf-markdown-body pre { background-color: #f3f4f6 !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; padding: 12px !important; margin: 12px 0 !important; font-family: monospace !important; font-size: 12px !important; white-space: pre-wrap !important; word-break: break-all !important; }
-        .pdf-markdown-body code { background-color: #f3f4f6 !important; padding: 2px 5px !important; border-radius: 4px !important; font-family: monospace !important; font-size: 12px !important; color: #1f2937 !important; }
+        .pdf-markdown-body pre { background-color: #f3f4f6 !important; border: 1px solid #e5e7eb !important; border-radius: 6px !important; padding: 12px !important; margin: 12px 0 !important; font-family: monospace !important; font-size: 12px !important; white-space: pre-wrap !important; word-break: break-all !important; color: #111827 !important; }
+        .pdf-markdown-body code { background-color: #f3f4f6 !important; padding: 2px 5px !important; border-radius: 4px !important; font-family: monospace !important; font-size: 12px !important; color: #111827 !important; }
         .pdf-markdown-body table { width: 100% !important; border-collapse: collapse !important; margin: 12px 0 !important; }
-        .pdf-markdown-body th, .pdf-markdown-body td { border: 1px solid #d1d5db !important; padding: 8px 12px !important; text-align: left !important; font-size: 12px !important; }
+        .pdf-markdown-body th, .pdf-markdown-body td { border: 1px solid #d1d5db !important; padding: 8px 12px !important; text-align: left !important; font-size: 12px !important; color: #111827 !important; }
         .pdf-markdown-body th { background-color: #f9fafb !important; font-weight: 600 !important; color: #111827 !important; }
         .pdf-markdown-body blockquote { border-left: 4px solid #9ca3af !important; padding-left: 12px !important; margin: 12px 0 !important; color: #4b5563 !important; font-style: italic !important; }
     `;
@@ -106,31 +107,42 @@ export const downloadAsPDF = async (
 
     document.body.appendChild(tempContainer);
 
-    try {
-        const opt = {
-            margin: [12, 12, 12, 12] as [number, number, number, number],
-            filename: filename,
-            image: { type: 'jpeg' as const, quality: 0.98 },
-            html2canvas: {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                logging: false
-            },
-            jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        };
+    // Wait 100ms for DOM layout render
+    await new Promise(resolve => setTimeout(resolve, 100));
 
-        const html2pdfFn = typeof html2pdf === 'function' ? html2pdf : (html2pdf as unknown as { default: typeof html2pdf }).default;
-        if (typeof html2pdfFn === 'function') {
-            await html2pdfFn().set(opt).from(tempContainer).save();
-        } else {
-            const doc = new jsPDF();
-            doc.setFontSize(10);
-            const lines = doc.splitTextToSize(content, 180);
-            doc.text(lines, 15, 15);
-            doc.save(filename);
+    try {
+        const canvas = await html2canvas(tempContainer, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: 750
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+        const imgWidth = pdfWidth - (margin * 2);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        let heightLeft = imgHeight;
+        let position = margin;
+
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pdfHeight - (margin * 2));
+
+        while (heightLeft > 0) {
+            position = margin - (imgHeight - heightLeft);
+            pdf.addPage();
+            pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+            heightLeft -= (pdfHeight - (margin * 2));
         }
+
+        pdf.save(filename);
     } catch (err) {
         console.error('PDF export error, falling back to jsPDF text output:', err);
         const doc = new jsPDF();
