@@ -127,9 +127,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                         Encrypted OAuth Tokens • Multi-Tenant Isolated Sessions
                     </div>
                     <div className="flex items-center gap-2.5 text-[11px] text-zinc-400 font-sans">
-                        <Link to="/privacy" target="_blank" className="hover:text-emerald-400 underline transition-colors">Privacy Policy</Link>
+                        <Link to="/" className="hover:text-white transition-colors">Homepage</Link>
                         <span className="text-zinc-600">•</span>
-                        <Link to="/terms" target="_blank" className="hover:text-emerald-400 underline transition-colors">Terms of Service</Link>
+                        <Link to="/privacy" target="_blank" className="hover:text-white underline transition-colors">Privacy Policy</Link>
+                        <span className="text-zinc-600">•</span>
+                        <Link to="/terms" target="_blank" className="hover:text-white underline transition-colors">Terms of Service</Link>
                     </div>
                 </div>
             </motion.div>
