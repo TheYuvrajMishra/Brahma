@@ -4,7 +4,7 @@ export interface TelemetryStep {
     stage: string;
     label: string;
     timestamp: string;
-    details?: any;
+    details?: Record<string, unknown> | unknown;
     status?: 'pending' | 'active' | 'completed' | 'failed';
     favicon?: string;
     url?: string;

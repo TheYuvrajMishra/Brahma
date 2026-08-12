@@ -313,9 +313,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             } else {
                 alert(`Failed to convert file: ${data.error}`);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('File conversion error:', err);
-            alert(`Error uploading file: ${err.message}`);
+            const msg = err instanceof Error ? err.message : String(err);
+            alert(`Error uploading file: ${msg}`);
         } finally {
             setUploadingFile(false);
             if (e.target) e.target.value = '';

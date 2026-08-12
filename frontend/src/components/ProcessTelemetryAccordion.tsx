@@ -8,7 +8,7 @@ interface ProcessTelemetryAccordionProps {
     defaultExpanded?: boolean;
 }
 
-const parseDetailsData = (details: any): any => {
+const parseDetailsData = (details: unknown): unknown => {
     if (!details) return null;
     if (typeof details === 'object') return details;
     if (typeof details === 'string') {
@@ -24,13 +24,13 @@ const parseDetailsData = (details: any): any => {
     return details;
 };
 
-const FormattedTelemetryDetails: React.FC<{ details: any }> = ({ details }) => {
+const FormattedTelemetryDetails: React.FC<{ details: unknown }> = ({ details }) => {
     const [showRaw, setShowRaw] = useState(false);
     const parsed = parseDetailsData(details);
 
     if (!parsed) return null;
 
-    const renderKeyValuePills = (obj: Record<string, any>) => {
+    const renderKeyValuePills = (obj: Record<string, unknown>) => {
         const entries = Object.entries(obj).filter(([k, v]) => v !== undefined && v !== null && k !== '_dependency_context');
         if (entries.length === 0) return null;
 
@@ -74,24 +74,24 @@ const FormattedTelemetryDetails: React.FC<{ details: any }> = ({ details }) => {
                     </pre>
                 ) : (
                     <div className="space-y-1.5">
-                        {parsed.map((stepItem: any, idx: number) => (
+                        {(parsed as Record<string, unknown>[]).map((stepItem: Record<string, unknown>, idx: number) => (
                             <div key={idx} className="p-2 rounded-xl bg-white/[0.02] border border-white/5 hover:border-white/10 transition-colors">
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
                                         <span className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px] font-semibold">
-                                            Step {stepItem.step || idx + 1}
+                                            Step {String(stepItem.step || idx + 1)}
                                         </span>
                                         <span className="text-[11px] font-medium text-zinc-200">
-                                            {stepItem.action || stepItem.tool}
+                                            {String(stepItem.action || stepItem.tool || '')}
                                         </span>
                                     </div>
-                                    {stepItem.tool && (
+                                    {Boolean(stepItem.tool) && (
                                         <span className="px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono text-[10px]">
-                                            {stepItem.tool}
+                                            {String(stepItem.tool)}
                                         </span>
                                     )}
                                 </div>
-                                {stepItem.params && renderKeyValuePills(stepItem.params)}
+                                {Boolean(stepItem.params) && renderKeyValuePills(stepItem.params as Record<string, unknown>)}
                             </div>
                         ))}
                     </div>
@@ -101,8 +101,9 @@ const FormattedTelemetryDetails: React.FC<{ details: any }> = ({ details }) => {
     }
 
     // Case 2: Structured Object
-    if (typeof parsed === 'object') {
-        const hasTool = parsed.tool || parsed.intent || parsed.action;
+    if (typeof parsed === 'object' && parsed !== null) {
+        const obj = parsed as Record<string, unknown>;
+        const hasTool = obj.tool || obj.intent || obj.action;
         return (
             <div className="mt-1.5 space-y-1.5">
                 <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
@@ -122,30 +123,30 @@ const FormattedTelemetryDetails: React.FC<{ details: any }> = ({ details }) => {
                     </pre>
                 ) : (
                     <div className="p-2 rounded-xl bg-white/[0.02] border border-white/5 space-y-1.5">
-                        {hasTool && (
+                        {Boolean(hasTool) && (
                             <div className="flex items-center gap-2">
-                                {parsed.tool && (
+                                {Boolean(obj.tool) && (
                                     <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 font-mono text-[10px] font-medium">
-                                        Tool: {parsed.tool}
+                                        Tool: {String(obj.tool)}
                                     </span>
                                 )}
-                                {parsed.intent && (
+                                {Boolean(obj.intent) && (
                                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono text-[10px] font-medium">
-                                        Intent: {parsed.intent}
+                                        Intent: {String(obj.intent)}
                                     </span>
                                 )}
-                                {parsed.status && (
+                                {Boolean(obj.status) && (
                                     <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-medium ${
-                                        parsed.status === 'success' 
+                                        obj.status === 'success' 
                                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
                                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                     }`}>
-                                        {parsed.status}
+                                        {String(obj.status)}
                                     </span>
                                 )}
                             </div>
                         )}
-                        {parsed.params ? renderKeyValuePills(parsed.params) : renderKeyValuePills(parsed)}
+                        {obj.params ? renderKeyValuePills(obj.params as Record<string, unknown>) : renderKeyValuePills(obj)}
                     </div>
                 )}
             </div>
@@ -172,11 +173,13 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
     const activeStep = telemetry[telemetry.length - 1];
 
     const getFavicon = (step: TelemetryStep) => {
-        return step.favicon || (step.details && step.details.favicon);
+        const detailsObj = step.details && typeof step.details === 'object' ? (step.details as Record<string, string>) : null;
+        return step.favicon || detailsObj?.favicon;
     };
 
     const getUrl = (step: TelemetryStep) => {
-        return step.url || (step.details && step.details.url);
+        const detailsObj = step.details && typeof step.details === 'object' ? (step.details as Record<string, string>) : null;
+        return step.url || detailsObj?.url;
     };
 
     const activeFavicon = activeStep ? getFavicon(activeStep) : null;
@@ -246,7 +249,7 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                                 )}
                             </div>
 
-                            {activeStep?.details && (
+                            {Boolean(activeStep?.details) && (
                                 <div className="pl-5 pt-1">
                                     <FormattedTelemetryDetails details={activeStep.details} />
                                 </div>
@@ -284,7 +287,7 @@ export const ProcessTelemetryAccordion: React.FC<ProcessTelemetryAccordionProps>
                                             )}
                                         </div>
 
-                                        {step.details && (
+                                        {Boolean(step.details) && (
                                             <div className="pl-5 pt-1">
                                                 <FormattedTelemetryDetails details={step.details} />
                                             </div>

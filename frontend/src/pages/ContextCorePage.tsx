@@ -21,7 +21,7 @@ export const ContextCorePage: React.FC = () => {
         if (!socket) return;
         setSelectedFile(filename);
         setSaveStatus('idle');
-        socket.emit('brain:read', filename, (res: any) => {
+        socket.emit('brain:read', filename, (res: { success?: boolean; content?: string; error?: string }) => {
             if (res.success) {
                 setFileContent(res.content || '');
                 setSavedContent(res.content || '');
@@ -33,7 +33,7 @@ export const ContextCorePage: React.FC = () => {
 
     const fetchFileList = useCallback(() => {
         if (!socket) return;
-        socket.emit('brain:list', (res: any) => {
+        socket.emit('brain:list', (res: { success?: boolean; files?: string[]; error?: string }) => {
             if (res.success) {
                 setFiles(res.files || []);
                 if (res.files && res.files.length > 0 && !selectedFile) {
@@ -54,7 +54,7 @@ export const ContextCorePage: React.FC = () => {
         if (!socket || !selectedFile || isSaving) return;
         setIsSaving(true);
         setSaveStatus('idle');
-        socket.emit('brain:write', { filename: selectedFile, content: fileContent }, (res: any) => {
+        socket.emit('brain:write', { filename: selectedFile, content: fileContent }, (res: { success?: boolean; error?: string }) => {
             setIsSaving(false);
             if (res.success) {
                 setSavedContent(fileContent);

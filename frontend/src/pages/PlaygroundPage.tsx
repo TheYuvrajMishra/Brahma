@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import type { Message } from '../types';
+import type { Message, TelemetryStep } from '../types';
 import type { LayoutContextType } from '../components/MainLayout';
 import { ChatArea } from '../components/ChatArea';
 import '../App.css';
@@ -17,9 +17,9 @@ export const PlaygroundPage: React.FC = () => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [currentTelemetry, setCurrentTelemetry] = useState<any[]>([]);
+    const [currentTelemetry, setCurrentTelemetry] = useState<TelemetryStep[]>([]);
     
-    const telemetryRef = useRef<any[]>([]);
+    const telemetryRef = useRef<TelemetryStep[]>([]);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -35,14 +35,14 @@ export const PlaygroundPage: React.FC = () => {
             }
         };
 
-        const handleTelemetry = (data: any) => {
-            const stepItem = {
+        const handleTelemetry = (data: { event?: string; stage?: string; label?: string; timestamp?: string; details?: unknown; plan?: unknown; step?: unknown }) => {
+            const stepItem: TelemetryStep = {
                 id: (data.event || 'step') + '_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-                event: data.event,
+                event: data.event || 'telemetry',
                 stage: data.stage || 'Pipeline Execution',
                 label: data.label || 'Processing stage payload...',
                 timestamp: data.timestamp || new Date().toISOString(),
-                details: data.details || data.plan || data.step || null
+                details: data.details || data.plan || data.step || undefined
             };
             telemetryRef.current = [...telemetryRef.current, stepItem];
             setCurrentTelemetry(telemetryRef.current);
@@ -53,7 +53,7 @@ export const PlaygroundPage: React.FC = () => {
             telemetryRef.current = [];
         };
 
-        const handleSessionLoaded = (data: any) => {
+        const handleSessionLoaded = (data: { success?: boolean; messages?: Message[] }) => {
             if (data.success && data.messages) {
                 setMessages(data.messages);
             }
@@ -75,7 +75,7 @@ export const PlaygroundPage: React.FC = () => {
     // ── Load messages when active session changes ─────────────────────
     useEffect(() => {
         if (!socket || !activeSessionId) return;
-        socket.emit('session:load', activeSessionId, (data: any) => {
+        socket.emit('session:load', activeSessionId, (data: { success?: boolean; messages?: Message[] }) => {
             if (data.success) {
                 setMessages(data.messages || []);
             } else {

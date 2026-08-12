@@ -11,7 +11,7 @@ interface LogEntry {
     timestamp: string;
     level: string;
     action?: string;
-    details?: any;
+    details?: unknown;
 }
 
 export const AuditTelemetryPage: React.FC = () => {
@@ -37,7 +37,7 @@ export const AuditTelemetryPage: React.FC = () => {
             return;
         }
 
-        socket.emit('logs:read', (res: any) => {
+        socket.emit('logs:read', (res: { success?: boolean; logs?: LogEntry[]; error?: string }) => {
             setLoading(false);
             if (res && res.success) {
                 setLogs(res.logs || []);
@@ -91,7 +91,7 @@ export const AuditTelemetryPage: React.FC = () => {
         }
     };
 
-    const formatDetails = (details: any) => {
+    const formatDetails = (details: unknown) => {
         if (!details) return '';
         if (typeof details === 'string') return details;
         if (typeof details === 'object') {

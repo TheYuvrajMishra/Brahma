@@ -76,7 +76,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ user, onOnboardi
                 setError(data.error || 'Failed to complete onboarding.');
                 setIsInitializing(false);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Onboarding failed:', err);
             setError('Error initializing Brahma brain. Please try again.');
             setIsInitializing(false);
@@ -294,7 +294,7 @@ export const OnboardingPage: React.FC<OnboardingPageProps> = ({ user, onOnboardi
                                     ].map(opt => (
                                         <div
                                             key={opt.id}
-                                            onClick={() => setInteractionStyle(opt.id as any)}
+                                            onClick={() => setInteractionStyle(opt.id as 'conversational' | 'analytical' | 'executive')}
                                             className={`p-4 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start gap-3 ${
                                                 interactionStyle === opt.id
                                                     ? 'bg-white/10 border-white/30 text-white'

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { PiTerminalLight } from 'react-icons/pi';
 
 interface AuthScreenProps {
     onLoginSuccess: () => void;
@@ -50,7 +49,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 setError('Google OAuth client ID is not configured on backend.');
                 setConnecting(false);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Failed to get Google Auth URL:', err);
             setError('Could not initialize Google Connection. Ensure backend is running.');
             setConnecting(false);

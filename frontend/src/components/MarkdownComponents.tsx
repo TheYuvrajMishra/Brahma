@@ -39,8 +39,8 @@ const extractText = (node: React.ReactNode): string => {
     if (typeof node === 'number') return String(node);
     if (!node) return '';
     if (Array.isArray(node)) return node.map(extractText).join('');
-    if (React.isValidElement(node) && node.props && (node.props as any).children) {
-        return extractText((node.props as any).children);
+    if (React.isValidElement<{ children?: React.ReactNode }>(node) && node.props && node.props.children) {
+        return extractText(node.props.children);
     }
     return '';
 };
@@ -153,7 +153,7 @@ const MarkdownPre: React.FC<React.HTMLAttributes<HTMLPreElement>> = ({ children,
     let rawCode = '';
 
     if (childArray.length > 0 && React.isValidElement(childArray[0])) {
-        const codeElement = childArray[0] as React.ReactElement<any>;
+        const codeElement = childArray[0] as React.ReactElement<{ children?: React.ReactNode }>;
         rawCode = extractText(codeElement.props?.children);
     } else {
         rawCode = extractText(children);

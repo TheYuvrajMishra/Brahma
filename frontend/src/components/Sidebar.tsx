@@ -8,7 +8,6 @@ import {
     PiTrashLight, 
     PiCheckLight, 
     PiXLight,
-    PiTerminalLight,
     PiSignOutLight,
     PiArrowCounterClockwiseLight
 } from 'react-icons/pi';

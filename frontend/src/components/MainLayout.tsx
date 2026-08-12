@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import io from 'socket.io-client';
+import io, { Socket } from 'socket.io-client';
 import type { Session, UserProfile } from '../types';
 import { Sidebar } from './Sidebar';
 import { AuthScreen } from '../pages/AuthScreen';
 import { OnboardingPage } from '../pages/OnboardingPage';
 
 export interface LayoutContextType {
-    socket: any;
+    socket: Socket | null;
     connected: boolean;
     sessions: Session[];
     activeSessionId: string | null;
-    setActiveSessionId: React.SetStateAction<any>;
+    setActiveSessionId: React.Dispatch<React.SetStateAction<string | null>>;
     createNewSession: () => void;
     deleteSession: (id: string) => void;
     switchSession: (id: string) => void;
@@ -24,7 +24,7 @@ export const MainLayout: React.FC = () => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
 
-    const [socket, setSocket] = useState<any>(null);
+    const [socket, setSocket] = useState<Socket | null>(null);
     const [connected, setConnected] = useState(false);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export const MainLayout: React.FC = () => {
 
         newSocket.on('connect', () => { 
             setConnected(true); 
-            newSocket.emit('google:status', (res: any) => {
+            newSocket.emit('google:status', (res: { connected?: boolean; email?: string }) => {
                 if (res) {
                     setGoogleConnected(!!res.connected);
                     setGoogleEmail(res.email || user.email);
@@ -86,7 +86,7 @@ export const MainLayout: React.FC = () => {
             });
         });
         newSocket.on('disconnect', () => { setConnected(false); });
-        newSocket.on('connect_error', (err: any) => { console.error('Socket error:', err); });
+        newSocket.on('connect_error', (err: Error) => { console.error('Socket error:', err); });
 
         newSocket.on('google:connected', (data: { connected: boolean; email?: string }) => {
             setGoogleConnected(data.connected);
@@ -163,7 +163,7 @@ export const MainLayout: React.FC = () => {
 
     const createNewSession = useCallback(() => {
         if (!socket) return;
-        socket.emit('session:create', (data: any) => {
+        socket.emit('session:create', (data: { success?: boolean; sessionId: string; title?: string }) => {
             if (data.success) {
                 const newSession: Session = {
                     sessionId: data.sessionId,
@@ -179,7 +179,7 @@ export const MainLayout: React.FC = () => {
 
     const loadSessions = useCallback(() => {
         if (!socket) return;
-        socket.emit('session:list', (data: any) => {
+        socket.emit('session:list', (data: { success?: boolean; sessions: Session[] }) => {
             if (data.success && data.sessions.length > 0) {
                 setSessions(data.sessions);
                 setActiveSessionId(prev => {
@@ -200,7 +200,7 @@ export const MainLayout: React.FC = () => {
 
     const deleteSession = useCallback((sessionId: string) => {
         if (!socket) return;
-        socket.emit('session:delete', sessionId, (data: any) => {
+        socket.emit('session:delete', sessionId, (data: { success?: boolean }) => {
             if (data.success) {
                 setSessions(prev => {
                     const remaining = prev.filter(s => s.sessionId !== sessionId);
