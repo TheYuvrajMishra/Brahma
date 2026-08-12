@@ -71,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {/* Sidebar Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <PiTerminalLight className="w-5 h-5 text-emerald-400" />
+                        <img src="/lotus-logo.svg" alt="Brahma Lotus Logo" className="w-5 h-5 object-contain" />
                         <span className="font-display font-semibold tracking-wider text-sm text-white/90">
                             BRAHMA SYSTEM
                         </span>

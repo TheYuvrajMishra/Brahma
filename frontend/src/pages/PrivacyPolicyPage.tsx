@@ -63,8 +63,8 @@ export const PrivacyPolicyPage: React.FC = () => {
                         </Link>
                         <div className="h-4 w-px bg-white/10 hidden sm:block" />
                         <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center">
-                                <PiTerminalLight className="w-4 h-4 text-white" />
+                            <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center p-1">
+                                <img src="/lotus-logo.svg" alt="Brahma Lotus Logo" className="w-full h-full object-contain" />
                             </div>
                             <span className="font-display font-semibold text-sm tracking-wider text-white">
                                 BRAHMA
@@ -479,7 +479,7 @@ export const PrivacyPolicyPage: React.FC = () => {
             <footer className="w-full border-t border-white/10 py-8 bg-[#050505] relative z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500">
                     <div className="flex items-center gap-2">
-                        <PiTerminalLight className="w-4 h-4 text-white" />
+                        <img src="/lotus-logo.svg" alt="Brahma Lotus Logo" className="w-4 h-4 object-contain" />
                         <span className="font-display font-semibold text-zinc-300">BRAHMA SYSTEM</span>
                         <span>© 2026 Yuvraj Mishra. All rights reserved.</span>
                     </div>

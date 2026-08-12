@@ -74,8 +74,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                 className="w-full max-w-md mx-4 p-8 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col items-center text-center relative z-10"
             >
                 {/* Logo & Header */}
-                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-                    <PiTerminalLight className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 p-2.5">
+                    <img src="/lotus-logo.svg" alt="Brahma Lotus Logo" className="w-full h-full object-contain" />
                 </div>
 
                 <h1 className="text-2xl font-display font-semibold tracking-wider text-white mb-2">
