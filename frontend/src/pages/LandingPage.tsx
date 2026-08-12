@@ -42,11 +42,11 @@ export const LandingPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-4 sm:gap-6 text-xs font-medium">
-                        <a href="#purpose" className="text-zinc-300 hover:text-white transition-colors flex items-center gap-1 font-semibold">
-                            <PiInfoLight className="w-4 h-4" />
-                            <span>App Purpose</span>
+                        <a href="#purpose" className="text-zinc-200 hover:text-white transition-colors flex items-center gap-1 font-semibold">
+                            <PiInfoLight className="w-4 h-4 text-white" />
+                            <span>Application Purpose</span>
                         </a>
-                        <a href="#workspace" className="hidden md:inline-block text-zinc-400 hover:text-white transition-colors">
+                        <a href="#scopes" className="hidden md:inline-block text-zinc-400 hover:text-white transition-colors">
                             Google Integration
                         </a>
                         <Link to="/privacy" className="text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
@@ -74,113 +74,109 @@ export const LandingPage: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
-                    className="flex flex-col items-center text-center max-w-4xl mx-auto mb-14"
+                    className="flex flex-col items-center text-center max-w-4xl mx-auto mb-12"
                 >
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/10 text-zinc-300 text-xs font-mono mb-6">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/15 text-white text-xs font-mono mb-6 shadow-sm">
                         <PiSparkleLight className="w-4 h-4 text-white" />
-                        <span>Application Name: Brahma • Multi-Platform Agentic AI Runtime</span>
+                        <span>Application Name: Brahma • Automated Productivity Assistant</span>
                     </div>
 
-                    <h1 className="text-5xl sm:text-7xl lg:text-8xl font-display font-bold tracking-tight text-white mb-6 leading-[1.05]">
+                    <h1 className="text-4xl sm:text-6xl lg:text-7xl font-display font-bold tracking-tight text-white mb-6 leading-[1.1]">
                         Brahma
                     </h1>
 
-                    <p className="text-base sm:text-xl text-zinc-300 max-w-3xl leading-relaxed mb-8">
-                        Brahma is an intelligent agentic AI runtime built to help users automate productivity tasks, execute cognitive planning, manage personal memory context, and connect securely to Google Workspace services.
+                    <p className="text-base sm:text-xl text-zinc-300 max-w-3xl leading-relaxed mb-8 font-sans">
+                        Brahma is a productivity application designed to automate workplace workflows by connecting user instructions with Google Workspace services like Gmail, Google Sheets, Google Calendar, and Google Drive.
                     </p>
 
-                    <div className="flex flex-wrap items-center justify-center gap-3">
+                    <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
                         <Link 
                             to="/playground" 
-                            className="px-6 py-3 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all active:scale-95 shadow-lg flex items-center gap-2"
+                            className="px-6 py-3.5 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all active:scale-95 shadow-lg flex items-center gap-2"
                         >
                             <span>Launch Brahma App</span>
                             <PiArrowRightLight className="w-4 h-4" />
                         </Link>
                         <Link 
                             to="/privacy" 
-                            className="px-6 py-3 rounded-2xl bg-white/[0.04] border border-white/10 text-white font-medium text-sm hover:bg-white/[0.08] transition-all flex items-center gap-2"
+                            className="px-6 py-3.5 rounded-2xl bg-white/[0.04] border border-white/10 text-white font-medium text-sm hover:bg-white/[0.08] transition-all flex items-center gap-2"
                         >
                             <PiShieldCheckLight className="w-4 h-4" />
                             <span>Privacy Policy</span>
                         </Link>
                     </div>
-                </motion.div>
 
-                {/* Explicit App Purpose Disclosure (CRITICAL FOR GOOGLE OAUTH VERIFICATION) */}
-                <section id="purpose" className="scroll-mt-24 p-8 sm:p-12 rounded-3xl bg-white/[0.03] border border-white/15 backdrop-blur-xl mb-16 shadow-2xl">
-                    <div className="max-w-4xl">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-mono mb-4">
+                    {/* Dedicated Purpose Box right in Hero */}
+                    <div id="purpose" className="w-full text-left p-6 sm:p-8 rounded-3xl bg-white/[0.03] border border-white/15 backdrop-blur-xl shadow-2xl">
+                        <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-white mb-3">
                             <PiInfoLight className="w-4 h-4 text-white" />
-                            <span>Google Verification Disclosure — Application Purpose</span>
+                            <span>Official Purpose Statement</span>
                         </div>
 
-                        <h2 className="text-2xl sm:text-4xl font-display font-bold text-white mb-4">
-                            About Brahma & Purpose Statement
+                        <h2 className="text-xl sm:text-2xl font-display font-bold text-white mb-3">
+                            What is the purpose of the Brahma application?
                         </h2>
 
-                        <div className="space-y-4 text-sm sm:text-base text-zinc-300 leading-relaxed">
-                            <p>
-                                <strong className="text-white">Brahma</strong> is a productivity-focused Multi-Platform Agentic AI Runtime. The core purpose of the Brahma application is to convert high-level user instructions (such as "summarize my emails", "log updates to my spreadsheet", or "schedule a meeting") into structured execution steps and perform them automatically on behalf of the user.
-                            </p>
-                            
-                            <p>
-                                To accomplish these user-initiated tasks, Brahma integrates with Google Workspace APIs via Google OAuth. The requested Google API scopes allow Brahma users to perform the following core features:
-                            </p>
+                        <p className="text-sm sm:text-base text-zinc-300 leading-relaxed mb-4">
+                            The primary purpose of <strong className="text-white">Brahma</strong> is to serve as an intelligent productivity assistant that helps users streamline routine office tasks. By authenticating through Google OAuth, users grant Brahma permission to interact with their Google Workspace tools via conversational AI commands.
+                        </p>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-                                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 text-white font-semibold text-base">
-                                        <PiEnvelopeSimpleLight className="w-5 h-5 text-white" />
-                                        <span>Gmail Integration</span>
-                                    </div>
-                                    <p className="text-xs sm:text-sm text-zinc-400 leading-normal">
-                                        Allows Brahma to read email threads for context summarization and draft or send email responses when explicitly commanded by the user.
-                                    </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+                            {/* Gmail */}
+                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2 text-white font-semibold text-sm">
+                                    <PiEnvelopeSimpleLight className="w-4 h-4 text-white shrink-0" />
+                                    <span>Gmail Usage</span>
                                 </div>
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    Reads email threads to provide summaries and creates draft replies requested by the user.
+                                </p>
+                            </div>
 
-                                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 text-white font-semibold text-base">
-                                        <PiTableLight className="w-5 h-5 text-white" />
-                                        <span>Google Sheets Integration</span>
-                                    </div>
-                                    <p className="text-xs sm:text-sm text-zinc-400 leading-normal">
-                                        Allows Brahma to read tabular spreadsheet data and append formatted output rows to user-selected Google Sheets documents.
-                                    </p>
+                            {/* Google Sheets */}
+                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2 text-white font-semibold text-sm">
+                                    <PiTableLight className="w-4 h-4 text-white shrink-0" />
+                                    <span>Google Sheets Usage</span>
                                 </div>
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    Reads user spreadsheet data and appends new rows or formatted log entries specified by the user.
+                                </p>
+                            </div>
 
-                                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 text-white font-semibold text-base">
-                                        <PiCalendarLight className="w-5 h-5 text-white" />
-                                        <span>Google Calendar Integration</span>
-                                    </div>
-                                    <p className="text-xs sm:text-sm text-zinc-400 leading-normal">
-                                        Allows Brahma to fetch upcoming calendar events to check availability and create new event invitations upon user request.
-                                    </p>
+                            {/* Google Calendar */}
+                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2 text-white font-semibold text-sm">
+                                    <PiCalendarLight className="w-4 h-4 text-white shrink-0" />
+                                    <span>Google Calendar Usage</span>
                                 </div>
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    Fetches schedule information to check free/busy times and creates calendar events upon user command.
+                                </p>
+                            </div>
 
-                                <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 text-white font-semibold text-base">
-                                        <PiDatabaseLight className="w-5 h-5 text-white" />
-                                        <span>Google Drive Integration</span>
-                                    </div>
-                                    <p className="text-xs sm:text-sm text-zinc-400 leading-normal">
-                                        Allows Brahma to search and read relevant document files stored in user's Google Drive for context-aware processing.
-                                    </p>
+                            {/* Google Drive */}
+                            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/10 flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2 text-white font-semibold text-sm">
+                                    <PiDatabaseLight className="w-4 h-4 text-white shrink-0" />
+                                    <span>Google Drive Usage</span>
                                 </div>
+                                <p className="text-xs text-zinc-400 leading-relaxed">
+                                    Searches and reads document files stored in user's Drive to extract context needed for user tasks.
+                                </p>
                             </div>
                         </div>
                     </div>
-                </section>
+                </motion.div>
 
-                {/* Features Grid */}
-                <div id="features" className="mb-20">
+                {/* Technical Architecture Overview */}
+                <div className="mb-20">
                     <div className="text-center mb-10">
-                        <h2 className="text-2xl sm:text-4xl font-display font-bold text-white mb-3">
-                            Brahma Architecture & Security
+                        <h2 className="text-2xl sm:text-3xl font-display font-bold text-white mb-3">
+                            How Brahma Works Under the Hood
                         </h2>
                         <p className="text-sm text-zinc-400 max-w-xl mx-auto">
-                            Built with multi-tenant sandboxing and military-grade encryption standards.
+                            A multi-tenant system built for execution privacy and data security.
                         </p>
                     </div>
 
@@ -190,10 +186,10 @@ export const LandingPage: React.FC = () => {
                                 <PiCpuLight className="w-5 h-5" />
                             </div>
                             <h3 className="text-lg font-display font-semibold text-white">
-                                Cognitive Execution DAG
+                                Task Planning & Execution
                             </h3>
                             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                                Decomposes user goals into sequential execution steps with real-time reflection and error retries.
+                                Breaks down complex user requests into step-by-step action plans, executing required tools in sequence.
                             </p>
                         </div>
 
@@ -202,10 +198,10 @@ export const LandingPage: React.FC = () => {
                                 <PiDatabaseLight className="w-5 h-5" />
                             </div>
                             <h3 className="text-lg font-display font-semibold text-white">
-                                Isolated Memory Brains
+                                Multi-Tenant Memory Sandboxing
                             </h3>
                             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                                Every tenant receives a dedicated memory sandbox (<code className="text-white font-mono text-[11px]">atman.md</code>, <code className="text-white font-mono text-[11px]">zehn.md</code>) ensuring strict multi-tenant privacy.
+                                User memory context (<code className="text-white font-mono text-[11px]">atman.md</code>, <code className="text-white font-mono text-[11px]">zehn.md</code>) is strictly partitioned per account.
                             </p>
                         </div>
 
@@ -214,44 +210,44 @@ export const LandingPage: React.FC = () => {
                                 <PiLockKeyLight className="w-5 h-5" />
                             </div>
                             <h3 className="text-lg font-display font-semibold text-white">
-                                AES-256-GCM Token Security
+                                AES-256 Token Encryption
                             </h3>
                             <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-                                Google OAuth access and refresh tokens are encrypted at rest with unique initialization vectors.
+                                OAuth credentials are encrypted at rest using AES-256-GCM. Unencrypted tokens are never saved to disk.
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Google Workspace Integration & Compliance Highlight */}
-                <div id="workspace" className="p-8 sm:p-12 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl mb-16">
+                {/* Google Scopes & Compliance Section */}
+                <div id="scopes" className="p-8 sm:p-12 rounded-3xl bg-white/[0.02] border border-white/10 backdrop-blur-xl mb-16">
                     <div className="mb-8">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-xs font-mono mb-3">
-                            Google User Data Policy Compliance
+                            Google API Services Compliance
                         </div>
                         <h2 className="text-2xl sm:text-3xl font-display font-bold text-white mb-3">
-                            Google API Scopes & Limited Use Disclosure
+                            Google API User Data Policy Compliance
                         </h2>
                         <p className="text-sm text-zinc-400 max-w-3xl leading-relaxed">
-                            Brahma's use and transfer to any other app of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-white underline hover:text-zinc-300">Google API Services User Data Policy</a>, including the Limited Use requirements.
+                            Brahma's use and transfer to any other app of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-white underline hover:text-zinc-300 font-semibold">Google API Services User Data Policy</a>, including the Limited Use requirements.
                         </p>
                     </div>
 
                     <div className="space-y-3 text-xs sm:text-sm text-zinc-300 mb-8">
                         <div className="flex items-start gap-2.5">
                             <PiCheckCircleLight className="w-5 h-5 text-white shrink-0 mt-0.5" />
-                            <span><strong className="text-white">Zero Base AI Training:</strong> Google user data is NEVER used to train, retrain, or fine-tune generalized AI or LLM models.</span>
+                            <span><strong className="text-white">Zero Base AI Model Training:</strong> Google user data obtained via Google APIs is NEVER used to train, retrain, or fine-tune AI foundation models.</span>
                         </div>
                         <div className="flex items-start gap-2.5">
                             <PiCheckCircleLight className="w-5 h-5 text-white shrink-0 mt-0.5" />
-                            <span><strong className="text-white">No Data Sale or Advertising:</strong> Google Workspace user data is never sold, transferred to third parties, or used for serving advertisements.</span>
+                            <span><strong className="text-white">No Selling of Data:</strong> User data is never sold to third parties, data brokers, or advertising platforms under any circumstances.</span>
                         </div>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-xs sm:text-sm text-zinc-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                         <div className="flex items-center gap-2">
                             <PiShieldCheckLight className="w-5 h-5 text-white shrink-0" />
-                            <span>Read full details in the Brahma Privacy Policy document.</span>
+                            <span>Review our complete data protection practices in our Privacy Policy.</span>
                         </div>
                         <Link to="/privacy" className="px-4 py-2 rounded-xl bg-white text-black font-semibold text-xs whitespace-nowrap hover:bg-zinc-200 transition-colors">
                             Read Privacy Policy
@@ -262,28 +258,28 @@ export const LandingPage: React.FC = () => {
                 {/* Bottom CTA Card */}
                 <div className="p-8 sm:p-12 rounded-3xl bg-white/[0.03] border border-white/10 text-center flex flex-col items-center">
                     <h2 className="text-2xl sm:text-3xl font-display font-bold text-white mb-3">
-                        Launch Brahma
+                        Get Started with Brahma
                     </h2>
                     <p className="text-sm text-zinc-400 max-w-md mb-6">
-                        Access your agent runtime session or review our legal compliance documents.
+                        Launch your Brahma runtime workspace or inspect our legal compliance documents.
                     </p>
                     <div className="flex flex-wrap gap-3 justify-center">
                         <Link 
                             to="/playground" 
-                            className="px-6 py-3 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all flex items-center gap-2"
+                            className="px-6 py-3.5 rounded-2xl bg-white text-black font-semibold text-sm hover:bg-zinc-200 transition-all flex items-center gap-2"
                         >
-                            <span>Open Brahma App</span>
+                            <span>Launch Brahma App</span>
                             <PiArrowRightLight className="w-4 h-4" />
                         </Link>
                         <Link 
                             to="/privacy" 
-                            className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white font-medium text-sm hover:bg-white/10 transition-all"
+                            className="px-6 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white font-medium text-sm hover:bg-white/10 transition-all"
                         >
                             Privacy Policy
                         </Link>
                         <Link 
                             to="/terms" 
-                            className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white font-medium text-sm hover:bg-white/10 transition-all"
+                            className="px-6 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white font-medium text-sm hover:bg-white/10 transition-all"
                         >
                             Terms of Service
                         </Link>
