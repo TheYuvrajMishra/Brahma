@@ -1,4 +1,5 @@
 import React, { type RefObject, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -111,18 +112,65 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
     const [copied, setCopied] = useState(false);
     const [downloadDropdownOpen, setDownloadDropdownOpen] = useState(false);
     const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+    const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+    const [openUpwards, setOpenUpwards] = useState(false);
+    const downloadBtnRef = useRef<HTMLButtonElement>(null);
     const downloadDropdownRef = useRef<HTMLDivElement>(null);
 
+    const toggleDownloadDropdown = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!downloadDropdownOpen && downloadBtnRef.current) {
+            const rect = downloadBtnRef.current.getBoundingClientRect();
+            const dropdownHeight = 125;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const isUpwards = spaceBelow < (dropdownHeight + 60);
+
+            const clampedLeft = Math.max(12, Math.min(rect.left, window.innerWidth - 160));
+
+            setOpenUpwards(isUpwards);
+            setDropdownStyle({
+                position: 'fixed',
+                left: `${clampedLeft}px`,
+                width: '144px',
+                zIndex: 9999,
+                ...(isUpwards 
+                    ? { bottom: `${window.innerHeight - rect.top + 6}px` } 
+                    : { top: `${rect.bottom + 6}px` }
+                )
+            });
+            setDownloadDropdownOpen(true);
+        } else {
+            setDownloadDropdownOpen(false);
+        }
+    };
+
     useEffect(() => {
+        if (!downloadDropdownOpen) return;
+
+        const handleScrollOrResize = () => {
+            setDownloadDropdownOpen(false);
+        };
+
         const handleClickOutside = (e: MouseEvent) => {
-            if (downloadDropdownRef.current && !downloadDropdownRef.current.contains(e.target as Node)) {
+            if (
+                downloadDropdownRef.current &&
+                !downloadDropdownRef.current.contains(e.target as Node) &&
+                downloadBtnRef.current &&
+                !downloadBtnRef.current.contains(e.target as Node)
+            ) {
                 setDownloadDropdownOpen(false);
             }
         };
-        if (downloadDropdownOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+
+        window.addEventListener('scroll', handleScrollOrResize, true);
+        window.addEventListener('resize', handleScrollOrResize);
+        document.addEventListener('mousedown', handleClickOutside);
+
+        return () => {
+            window.removeEventListener('scroll', handleScrollOrResize, true);
+            window.removeEventListener('resize', handleScrollOrResize);
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
     }, [downloadDropdownOpen]);
 
     const handleCopy = () => {
@@ -143,10 +191,10 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
         setDownloadDropdownOpen(false);
     };
 
-    const handleDownloadPDF = async (e: React.MouseEvent) => {
+    const handleDownloadPDF = async () => {
         setIsDownloadingPdf(true);
         try {
-            const msgContainer = (e.currentTarget as HTMLElement).closest('.group\\/msg');
+            const msgContainer = downloadBtnRef.current?.closest('.group\\/msg');
             const markdownBody = msgContainer?.querySelector('.markdown-body') as HTMLElement | null;
             const clean = stripLegacySecurityFooter(content);
             await downloadAsPDF(clean, markdownBody, `brahma-response-${Date.now()}.pdf`);
@@ -186,10 +234,11 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
 
             {/* Download Button & Dropdown (AI responses only) */}
             {!isUser && (
-                <div className="relative" ref={downloadDropdownRef}>
+                <>
                     <button
+                        ref={downloadBtnRef}
                         type="button"
-                        onClick={() => setDownloadDropdownOpen(prev => !prev)}
+                        onClick={toggleDownloadDropdown}
                         className="hover:text-zinc-300 transition-colors flex items-center gap-1 cursor-pointer"
                         title="Download response"
                     >
@@ -198,14 +247,16 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
                         <PiCaretDownLight className={`w-2.5 h-2.5 transition-transform duration-200 ${downloadDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>
 
-                    <AnimatePresence>
-                        {downloadDropdownOpen && (
+                    {downloadDropdownOpen && createPortal(
+                        <AnimatePresence>
                             <motion.div
-                                initial={{ opacity: 0, y: 4, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                                ref={downloadDropdownRef}
+                                style={dropdownStyle}
+                                initial={{ opacity: 0, scale: 0.95, y: openUpwards ? 4 : -4 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: openUpwards ? 4 : -4 }}
                                 transition={{ duration: 0.12 }}
-                                className="absolute left-0 mt-1.5 w-36 bg-zinc-900/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-md z-50 overflow-hidden py-1 font-sans text-xs"
+                                className="bg-zinc-900/95 border border-white/15 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden py-1 font-sans text-xs"
                             >
                                 <button
                                     type="button"
@@ -248,9 +299,10 @@ const MessageFooter: React.FC<MessageFooterProps> = ({
                                     <span className="text-[10px] text-zinc-500 font-mono">.txt</span>
                                 </button>
                             </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                        </AnimatePresence>,
+                        document.body
+                    )}
+                </>
             )}
 
             {/* Edit Button (User messages) */}
