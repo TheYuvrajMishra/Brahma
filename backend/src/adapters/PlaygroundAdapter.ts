@@ -73,6 +73,7 @@ export class PlaygroundAdapter implements Adapter {
             cors: { origin: '*', credentials: true }
         });
 
+        MemoryManager.syncAllUserBrains();
         this.setupTelemetryBus();
 
         // CORS and JSON Middleware

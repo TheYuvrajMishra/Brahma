@@ -60,6 +60,25 @@ export class MemoryManager {
         }
     }
 
+    /**
+     * Synchronizes core system files across all user persona brain directories.
+     * Called on server startup / deployment.
+     */
+    static syncAllUserBrains(): void {
+        try {
+            const usersDir = path.resolve(__dirname, '../../brahma [brain]/users');
+            if (fs.existsSync(usersDir)) {
+                const entries = fs.readdirSync(usersDir);
+                for (const userFolder of entries) {
+                    const userBrainPath = path.join(usersDir, userFolder, 'core');
+                    this.ensureUserBrain(userFolder, userBrainPath);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to sync all user brains:', err);
+        }
+    }
+
     static async getSoul(userId?: string, channelId?: string): Promise<string> {
         try {
             if (userId && channelId) {
