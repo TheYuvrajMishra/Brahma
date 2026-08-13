@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import type { Message, TelemetryStep } from '../types';
+import type { Message, TelemetryStep, ArtifactItem } from '../types';
 import type { LayoutContextType } from '../components/MainLayout';
 import { ChatArea } from '../components/ChatArea';
 import '../App.css';
@@ -15,6 +15,7 @@ export const PlaygroundPage: React.FC = () => {
     } = useOutletContext<LayoutContextType>();
 
     const [messages, setMessages] = useState<Message[]>([]);
+    const [artifacts, setArtifacts] = useState<ArtifactItem[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [currentTelemetry, setCurrentTelemetry] = useState<TelemetryStep[]>([]);
@@ -59,22 +60,42 @@ export const PlaygroundPage: React.FC = () => {
             }
         };
 
+        const handleArtifactCreated = (artifact: ArtifactItem) => {
+            if (artifact && artifact.sessionId === activeSessionId) {
+                setArtifacts(prev => {
+                    if (prev.some(a => a.artifactId === artifact.artifactId)) return prev;
+                    return [artifact, ...prev];
+                });
+            }
+        };
+
+        const handleArtifactsUpdated = (data: { sessionId: string; artifacts: ArtifactItem[] }) => {
+            if (data && data.sessionId === activeSessionId) {
+                setArtifacts(data.artifacts || []);
+            }
+        };
+
         socket.on('typing', handleTyping);
         socket.on('telemetry', handleTelemetry);
         socket.on('chat response', handleChatResponse);
         socket.on('session:loaded', handleSessionLoaded);
+        socket.on('artifact:created', handleArtifactCreated);
+        socket.on('artifacts:updated', handleArtifactsUpdated);
 
         return () => {
             socket.off('typing', handleTyping);
             socket.off('telemetry', handleTelemetry);
             socket.off('chat response', handleChatResponse);
             socket.off('session:loaded', handleSessionLoaded);
+            socket.off('artifact:created', handleArtifactCreated);
+            socket.off('artifacts:updated', handleArtifactsUpdated);
         };
-    }, [socket]);
+    }, [socket, activeSessionId]);
 
-    // ── Load messages when active session changes ─────────────────────
+    // ── Load messages & artifacts when active session changes ─────────────────────
     useEffect(() => {
         if (!socket || !activeSessionId) return;
+        
         socket.emit('session:load', activeSessionId, (data: { success?: boolean; messages?: Message[] }) => {
             if (data.success) {
                 setMessages(data.messages || []);
@@ -83,6 +104,14 @@ export const PlaygroundPage: React.FC = () => {
             }
             setIsTyping(false);
             inputRef.current?.focus();
+        });
+
+        socket.emit('artifacts:list', activeSessionId, (data: { success?: boolean; artifacts?: ArtifactItem[] }) => {
+            if (data.success && data.artifacts) {
+                setArtifacts(data.artifacts);
+            } else {
+                setArtifacts([]);
+            }
         });
     }, [socket, activeSessionId]);
 
@@ -132,6 +161,7 @@ export const PlaygroundPage: React.FC = () => {
             setSidebarOpen={setSidebarOpen}
             connected={connected}
             messages={messages}
+            artifacts={artifacts}
             isTyping={isTyping}
             currentTelemetry={currentTelemetry}
             inputValue={inputValue}
@@ -145,3 +175,4 @@ export const PlaygroundPage: React.FC = () => {
         />
     );
 };
+

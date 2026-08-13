@@ -488,7 +488,49 @@ export class PlaygroundAdapter implements Adapter {
             }
         });
 
+        // ── Artifact Endpoints ──────────────────────────────────────────
+        app.get('/api/artifacts/session/:sessionId', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+            try {
+                const { ArtifactEngine } = require('../pipeline/ArtifactEngine');
+                const artifacts = await ArtifactEngine.getSessionArtifacts(userId, req.params.sessionId);
+                res.json({ success: true, artifacts });
+            } catch (err: any) {
+                res.status(500).json({ success: false, error: err.message });
+            }
+        });
+
+        app.get('/api/artifacts/:artifactId', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+            try {
+                const { ArtifactEngine } = require('../pipeline/ArtifactEngine');
+                const artifact = await ArtifactEngine.getArtifactById(userId, req.params.artifactId);
+                if (!artifact) return res.status(404).json({ success: false, error: 'Artifact not found' });
+                res.json({ success: true, artifact });
+            } catch (err: any) {
+                res.status(500).json({ success: false, error: err.message });
+            }
+        });
+
+        app.get('/api/artifacts/:artifactId/download', async (req, res) => {
+            const userId = getUserIdFromReq(req);
+            if (!userId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+            try {
+                const { ArtifactEngine } = require('../pipeline/ArtifactEngine');
+                const artifact = await ArtifactEngine.getArtifactById(userId, req.params.artifactId);
+                if (!artifact || !fs.existsSync(artifact.storagePath)) {
+                    return res.status(404).send('File not found');
+                }
+                res.download(artifact.storagePath, artifact.filename);
+            } catch (err: any) {
+                res.status(500).send(`Error downloading file: ${err.message}`);
+            }
+        });
+
         // ── WebSocket Communication ──────────────────────────────────
+
 
         this.io.on('connection', (socket: Socket) => {
             const userId = getUserIdFromSocket(socket);
@@ -727,6 +769,24 @@ export class PlaygroundAdapter implements Adapter {
                 }
             });
 
+            // ── Artifacts List Socket Listener ────────────────────────────
+            socket.on('artifacts:list', async (sessionId: string, callback?: (data: any) => void) => {
+                const activeUserId = socket.data.userId || getUserIdFromSocket(socket);
+                if (!activeUserId) {
+                    if (callback) callback({ success: false, error: 'Unauthenticated' });
+                    return;
+                }
+                try {
+                    const { ArtifactEngine } = require('../pipeline/ArtifactEngine');
+                    const artifacts = await ArtifactEngine.getSessionArtifacts(activeUserId, sessionId);
+                    if (callback) callback({ success: true, artifacts });
+                } catch (err: any) {
+                    console.error('[Playground] artifacts:list failed:', err);
+                    if (callback) callback({ success: false, error: err.message });
+                }
+            });
+
+
             // ── Chat Message ─────────────────
 
             socket.on('chat message', async (payload: string | { text: string; sessionId: string }) => {
@@ -809,9 +869,22 @@ export class PlaygroundAdapter implements Adapter {
                     session.messages[targetIndex].content = payload.newText.trim();
                     session.messages[targetIndex].timestamp = new Date();
 
-                    // Truncate all subsequent messages (In-Place Overwrite & Truncation)
+                    // Truncate all subsequent messages & archive orphaned artifacts
+                    const truncatedMsgs = session.messages.slice(targetIndex + 1);
+                    const truncatedIds = truncatedMsgs.map(m => m.id);
                     session.messages = session.messages.slice(0, targetIndex + 1);
                     await session.save();
+
+                    if (truncatedIds.length > 0) {
+                        try {
+                            const { ArtifactEngine } = require('../pipeline/ArtifactEngine');
+                            await ArtifactEngine.archiveArtifactsAfterMessage(activeUserId, payload.sessionId, truncatedIds);
+                            const updatedArtifacts = await ArtifactEngine.getSessionArtifacts(activeUserId, payload.sessionId);
+                            socket.emit('artifacts:updated', { sessionId: payload.sessionId, artifacts: updatedArtifacts });
+                        } catch (e) {
+                            console.error('[Playground] Failed to archive artifacts on edit:', e);
+                        }
+                    }
 
                     // Rewind short-term memory (moment.md)
                     await rewindMoment(activeUserId, payload.sessionId, session.messages);
@@ -823,6 +896,7 @@ export class PlaygroundAdapter implements Adapter {
                         title: session.title,
                         messages: session.messages
                     });
+
 
                     // Trigger pipeline execution for edited prompt
                     const pipelineMsgId = `msg_edit_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -1068,7 +1142,19 @@ export class PlaygroundAdapter implements Adapter {
                 });
             }
         });
+
+        EventBus.on(SystemEvents.ARTIFACT_CREATED, ({ message, artifact }: any) => {
+            if (message && message.message_id) {
+                sendTelemetry(message.message_id, 'ARTIFACT_CREATED', {
+                    stage: 'Artifact Engine',
+                    label: `Generated artifact: ${artifact.filename} (${artifact.fileType.toUpperCase()})`,
+                    details: artifact
+                });
+            }
+            this.io.emit('artifact:created', artifact);
+        });
     }
+
 
     async init(onMessage: (msg: NormalizedMessage) => void): Promise<void> {
         this.onMessageCallback = onMessage;

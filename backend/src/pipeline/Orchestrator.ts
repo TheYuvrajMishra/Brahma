@@ -139,7 +139,18 @@ export class PipelineOrchestrator {
             await adapter.emit(response);
             EventBus.emit(SystemEvents.PIPELINE_COMPLETE, { message, response });
 
+            // Decoupled parallel artifact generation loop check
+            try {
+                const { ArtifactEngine } = require('./ArtifactEngine');
+                ArtifactEngine.checkAndTriggerArtifactFromMessage(message, response.content).catch((err: any) => {
+                    console.error('[Orchestrator] Parallel artifact trigger error:', err);
+                });
+            } catch (err) {
+                console.error('[Orchestrator] Failed to invoke ArtifactEngine check:', err);
+            }
+
             Logger.info('Orchestrator', message.message_id, Date.now() - startTime, 'SUCCESS');
+
         } catch (error: any) {
             Logger.error('Orchestrator', message.message_id, error);
             EventBus.emit(SystemEvents.PIPELINE_ERROR, { message, error: error.message });

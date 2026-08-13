@@ -51,3 +51,18 @@ export interface UserProfile {
     dislikes?: string;
     interactionStyle?: 'analytical' | 'conversational' | 'executive';
 }
+
+export interface ArtifactItem {
+    artifactId: string;
+    sessionId: string;
+    messageId?: string;
+    title: string;
+    filename: string;
+    fileType: 'json' | 'md' | 'pdf' | 'html' | 'css' | 'js' | 'docx' | 'xlsx' | string;
+    content?: string;
+    storagePath?: string;
+    isArchived: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+

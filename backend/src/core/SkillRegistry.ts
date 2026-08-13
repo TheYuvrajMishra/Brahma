@@ -21,6 +21,7 @@ import {
     ReplaceBanding
 } from '../skills/GoogleSheets';
 import { ConvertDocumentToMarkdown } from '../skills/ConvertDocument';
+import { CreateArtifact } from '../skills/CreateArtifact';
 
 class SkillRegistryClass {
     private skills: Map<string, ISkill> = new Map();
@@ -67,4 +68,6 @@ SkillRegistry.register(new AddCheckboxes());
 SkillRegistry.register(new RemoveCheckboxes());
 SkillRegistry.register(new ReplaceBanding());
 SkillRegistry.register(new ConvertDocumentToMarkdown());
+SkillRegistry.register(new CreateArtifact());
+
 

@@ -19,21 +19,26 @@ import {
     PiCaretDownLight,
     PiFileCodeLight,
     PiFilePdfLight,
-    PiFileTextLight
+    PiFileTextLight,
+    PiFolderSimpleLight
 } from 'react-icons/pi';
-import type { Message, MessageVariant, TelemetryStep } from '../types';
+import type { Message, MessageVariant, TelemetryStep, ArtifactItem } from '../types';
 import { TypewriterMarkdown } from './TypewriterMarkdown';
 import { ProcessTelemetryAccordion } from './ProcessTelemetryAccordion';
 import { InteractiveN8nCanvas } from './InteractiveN8nCanvas';
 import { markdownComponents } from './MarkdownComponents';
 import { downloadAsMarkdown, downloadAsTXT, downloadAsPDF } from '../utils/exportUtils';
+import { ArtifactViewerModal } from './ArtifactViewerModal';
+import { ArtifactsListPanel } from './ArtifactsListPanel';
 
 interface ChatAreaProps {
     sidebarOpen: boolean;
     setSidebarOpen: (open: boolean) => void;
     connected?: boolean;
     messages: Message[];
+    artifacts?: ArtifactItem[];
     isTyping: boolean;
+
     currentTelemetry?: TelemetryStep[];
     inputValue: string;
     setInputValue: (val: string) => void;
@@ -417,6 +422,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     sidebarOpen,
     setSidebarOpen,
     messages,
+    artifacts = [],
     isTyping,
     currentTelemetry = [],
     inputValue,
@@ -434,6 +440,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     const [showWittyPhase, setShowWittyPhase] = useState(false);
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [editingText, setEditingText] = useState<string>('');
+
+    const [selectedArtifact, setSelectedArtifact] = useState<ArtifactItem | null>(null);
+    const [artifactsPanelOpen, setArtifactsPanelOpen] = useState(false);
+
 
     // Calculate dynamic witty status duration (1s - 3s based on user message length)
     useEffect(() => {
@@ -541,10 +551,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </h1>
                 </div>
                 
-                {/* Live Plain IST Time */}
-                <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-[10px] font-mono select-none">
-                    {formatISTTime()}
+                <div className="flex items-center gap-2">
+                    {artifacts.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={() => setArtifactsPanelOpen(true)}
+                            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[10px] font-mono transition-colors cursor-pointer select-none"
+                            title="View session artifacts"
+                        >
+                            <PiFolderSimpleLight className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Artifacts ({artifacts.length})</span>
+                        </button>
+                    )}
+                    {/* Live Plain IST Time */}
+                    <div className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white text-[10px] font-mono select-none">
+                        {formatISTTime()}
+                    </div>
                 </div>
+
             </div>
 
             {/* Chat Container */}
@@ -772,6 +796,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </div>
                 </form>
             </div>
+
+            {/* Artifact Viewer Modal */}
+            <ArtifactViewerModal
+                artifact={selectedArtifact}
+                onClose={() => setSelectedArtifact(null)}
+            />
+
+            {/* Artifacts List Drawer Panel */}
+            <ArtifactsListPanel
+                isOpen={artifactsPanelOpen}
+                onClose={() => setArtifactsPanelOpen(false)}
+                artifacts={artifacts}
+                onSelectArtifact={(art) => {
+                    setSelectedArtifact(art);
+                    setArtifactsPanelOpen(false);
+                }}
+            />
         </div>
     );
 };
+
