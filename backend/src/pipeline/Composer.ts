@@ -51,12 +51,12 @@ export class Composer {
 
             const safeLog = executionLog.map(log => ({
                 ...log,
-                output: log.output && log.output.length > 1500 ? log.output.substring(0, 1500) + '\n...[TRUNCATED]...' : log.output
+                output: log.output && log.output.length > 50000 ? log.output.substring(0, 50000) + '\n...[TRUNCATED]...' : log.output
             }));
             const logString = JSON.stringify(safeLog, null, 2);
             
             const researchCtx = this.formatResearchContext(researchResult);
-            const cappedCtx = researchCtx.length > 2000 ? researchCtx.substring(0, 2000) + '\n...[TRUNCATED]' : researchCtx;
+            const cappedCtx = researchCtx.length > 60000 ? researchCtx.substring(0, 60000) + '\n...[TRUNCATED]' : researchCtx;
             
             let systemPrompt = `
 You are Brahma. Here is your soul/personality:

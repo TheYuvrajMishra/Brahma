@@ -21,9 +21,9 @@ export class LLMService {
                 console.warn(`[LLMService] Large prompt: ${totalSize} chars`);
             }
 
-            // 60s timeout to avoid hanging
+            // 180s timeout for large multi-section reasoning
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 60000);
+            const timeout = setTimeout(() => controller.abort(), 180000);
 
             const headers: Record<string, string> = { 'Content-Type': 'application/json' };
             if (config.llmApiKey) {

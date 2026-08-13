@@ -247,7 +247,7 @@ ${fullTranscriptText}
 
             console.log(`[YouTubeService] Splitting long transcript into ${chunks.length} sections for processing.`);
 
-            // Pass 1: Process each section independently
+            // Pass 1: Process each section sequentially with telemetry
             const sectionSummaries: string[] = [];
 
             for (let i = 0; i < chunks.length; i++) {
@@ -259,7 +259,7 @@ ${fullTranscriptText}
 
                 this.emitTelemetry(messageId, {
                     stage: 'YouTube Sectional Processing',
-                    label: `Analyzing Section ${i + 1}/${chunks.length} ${startTs} - ${endTs}`,
+                    label: `Analyzing Section ${i + 1}/${chunks.length} (${startTs} - ${endTs})`,
                     url: videoUrl,
                     domain: 'youtube.com',
                     favicon: 'https://www.google.com/s2/favicons?domain=youtube.com',
@@ -273,11 +273,14 @@ User Goal: "${userQuery}"
 Section Transcript Excerpt:
 ${chunkText}
 
-Extract and summarize key concepts, specific steps, technical details, code/examples, and timestamp markers from this section relevant to building the final answer/course for the user.
+Task: Extract key concepts, specific steps, technical details, code/examples, and timestamp markers from this section relevant to building the final answer/roadmap/course for the user.
+Important: Be concise, high-density, and actionable (under 350 words). Include exact timestamps [MM:SS].
 `.trim();
 
                 const secSummary = await LLMService.chat('You are a structured video section analyzer.', sectionPrompt, false);
-                sectionSummaries.push(`### Section ${i + 1} (${startTs} - ${endTs})\n${secSummary}`);
+                const fallbackSectionText = chunkText.split('\n').slice(0, 15).join('\n');
+                const cleanSec = secSummary && secSummary.trim().length > 50 ? secSummary.trim() : `Key timestamps & contents:\n${fallbackSectionText}`;
+                sectionSummaries.push(`### Section ${i + 1} (${startTs} - ${endTs})\n${cleanSec}`);
             }
 
             // Pass 2: Global Synthesis across all sections
@@ -289,6 +292,8 @@ Extract and summarize key concepts, specific steps, technical details, code/exam
                 favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
             });
 
+            const combinedSectionalFindings = sectionSummaries.join('\n\n=================================\n\n');
+
             const globalPrompt = `
 You are an expert curriculum architect and video content synthesizer.
 You have analyzed a ${chunks.length}-part transcript for YouTube video: ${videoUrl}
@@ -296,16 +301,21 @@ You have analyzed a ${chunks.length}-part transcript for YouTube video: ${videoU
 User Request: "${userQuery}"
 
 ### Sectional Analysis Findings:
-${sectionSummaries.join('\n\n=================================\n\n')}
+${combinedSectionalFindings}
 
 ### Master Task Instructions:
 1. Deliver an exhaustive, research-grade, highly structured response answering the user's specific request.
-2. If the user asked for a step-by-step course, structure it logically into Modules, Lessons, Timestamps, Hands-on Exercises, and Key Rules/Takeaways.
+2. If the user asked for a roadmap, course, or section summaries, structure it logically into:
+   - **Executive Roadmap Overview** (with milestones and timelines/timestamps)
+   - **Detailed Section-by-Section Breakdown** (incorporating timestamps and key concepts)
+   - **Key Takeaways & Next Steps**
 3. Ensure no critical concepts from any section are omitted. Combine sectional insights into a cohesive, beautifully formatted markdown document.
 `.trim();
 
             const globalResponse = await LLMService.chat('You are a master curriculum architect and synthesizer.', globalPrompt, false);
-            finalStructuredContent = globalResponse || sectionSummaries.join('\n\n');
+            finalStructuredContent = (globalResponse && globalResponse.trim().length > 100) 
+                ? globalResponse 
+                : `# 📌 Roadmap & Section-by-Section Summaries\n**Source Video:** ${videoUrl}\n\n${sectionSummaries.join('\n\n---\n\n')}`;
         }
 
         const entry: ContextEntry = {
