@@ -300,4 +300,43 @@ export class WebSearch implements ISkill {
 
         return scored.slice(0, maxChunks).map(s => s.chunk);
     }
+
+    async fetchDirectUrl(url: string, query: string, messageId?: string): Promise<string> {
+        const domain = this.extractDomain(url);
+        const favicon = this.getFaviconUrl(domain);
+
+        console.log(`[WebSearch] Direct link injection for: "${url}"`);
+
+        this.emitTelemetry(messageId, {
+            stage: 'Direct Link Research',
+            label: `Visiting direct article link: ${domain}`,
+            url,
+            domain,
+            favicon,
+            details: { url, query }
+        });
+
+        const cleanedText = await this.fetchAndCleanPageContent(url);
+
+        if (!cleanedText || cleanedText.trim().length < 100) {
+            console.warn(`[WebSearch] Direct fetch failed for ${url}, falling back to ranked search.`);
+            return this.execute({ query: `${query} ${url}`, _message_id: messageId });
+        }
+
+        const chunks = this.chunkAndFilterText(cleanedText, query, 5);
+        const articleText = chunks.length > 0 ? chunks.join('\n\n') : cleanedText.slice(0, 3000);
+
+        this.emitTelemetry(messageId, {
+            stage: 'Direct Article Cleaned',
+            label: `Extracted ${cleanedText.split(/\s+/).length} words from ${domain}`,
+            url,
+            domain,
+            favicon,
+            details: { url, wordCount: cleanedText.split(/\s+/).length }
+        });
+
+        return `### Direct Web Article Research Findings for "${url}"\n\n` +
+               `Source: ${domain}\nURL: ${url}\nFavicon: ${favicon}\n\nExcerpts:\n${articleText}`;
+    }
 }
+

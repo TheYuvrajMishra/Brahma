@@ -418,7 +418,9 @@ ${content}
         const isHtml = /\b(html|webpage|landing page|component|ui)\b/.test(text) && /\b(create|generate|make|build|export|download|write|save|give|produce)\b/.test(text);
         const isCss = /\b(css|stylesheet|styles)\b/.test(text) && /\b(create|generate|make|build|export|download|write|save|give|produce)\b/.test(text);
         const isJs = /\b(js|javascript|script)\b/.test(text) && /\b(create|generate|make|build|export|download|write|save|give|produce)\b/.test(text);
-        const isMd = /\b(md|markdown|notes|article|guide|file)\b/.test(text) && /\b(create|generate|make|build|export|download|write|save|give|produce)\b/.test(text);
+        const isYouTubeStructuredOutput = (/\b(youtube|youtu\.be)\b/i.test(text) || /https?:\/\/(www\.)?(youtube\.com|youtu\.be)/i.test(text)) && /\b(course|tutorial|curriculum|roadmap|guide|study notes|notes|summary|outline|modules?|lessons?)\b/i.test(text);
+        const isCourseRequest = /\b(course|tutorial|curriculum|roadmap|study guide)\b/i.test(text) && /\b(create|generate|make|build|export|download|write|save|give|produce|convert|derive|structure)\b/i.test(text);
+        const isMd = (/\b(md|markdown|notes|article|guide|file)\b/.test(text) && /\b(create|generate|make|build|export|download|write|save|give|produce)\b/.test(text)) || isYouTubeStructuredOutput || isCourseRequest;
 
         if (!isPdf && !isDocx && !isXlsx && !isJson && !isHtml && !isCss && !isJs && !isMd) {
             return;

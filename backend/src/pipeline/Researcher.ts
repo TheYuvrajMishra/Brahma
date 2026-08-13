@@ -5,6 +5,8 @@ import { LLMService } from '../services/LLMService';
 import { SkillRegistry } from '../core/SkillRegistry';
 import { Logger } from '../core/Logger';
 import { MemoryManager } from '../core/MemoryManager';
+import { YouTubeService } from '../services/YouTubeService';
+import { WebSearch } from '../skills/WebSearch';
 
 const DEPTH_MAP: Record<string, 'minimum' | 'standard'> = {
     casual: 'minimum',
@@ -34,6 +36,68 @@ export class Researcher {
         const userId = message.user_id;
 
         try {
+            // ── Phase -1: Direct URL & YouTube Detection (Skip Search-and-Rank) ────
+            const detectedUrls = message.content.match(/https?:\/\/[^\s<>"'\(\)]+/gi) || [];
+
+            if (detectedUrls.length > 0) {
+                console.log(`[Researcher] Detected ${detectedUrls.length} direct user-supplied URL(s):`, detectedUrls);
+                const directEntries: ContextEntry[] = [];
+                const webSearch = new WebSearch();
+
+                for (const url of detectedUrls) {
+                    const ytVideoId = YouTubeService.extractVideoId(url);
+                    if (ytVideoId) {
+                        // YouTube Link -> YouTube Transcript Pipeline
+                        console.log(`[Researcher] Routing user link to YouTube Transcript pipeline for video ID: ${ytVideoId}`);
+                        const ytEntry = await YouTubeService.processYouTubeUrl(url, message.content, message.message_id);
+                        ContextStoreManager.set(url, ytEntry, userId);
+                        directEntries.push(ytEntry);
+                    } else {
+                        // Regular Web Link -> Direct Visit & DOM Cleanup (Skip Search)
+                        console.log(`[Researcher] Routing regular link directly to Visit & Clean stage: ${url}`);
+                        const searchOutput = await webSearch.fetchDirectUrl(url, message.content, message.message_id);
+
+                        const domain = url.replace(/^https?:\/\//, '').split('/')[0].replace(/^www\./, '');
+                        const entry: ContextEntry = {
+                            entity_name: domain || url,
+                            what_it_is: `Direct Web Article content for ${url}`,
+                            key_facts: [searchOutput],
+                            current_status: 'active',
+                            relevant_to_goal: 'high',
+                            sources: [url],
+                            confidence: 'high',
+                            last_updated: new Date().toISOString(),
+                            researched_at: Date.now()
+                        };
+
+                        ContextStoreManager.set(url, entry, userId);
+                        directEntries.push(entry);
+                    }
+                }
+
+                const parsedIntent: ParsedIntent = {
+                    intent: 'research',
+                    entities: detectedUrls,
+                    actions: ['direct_url_visit'],
+                    constraints: [],
+                    context: message.content,
+                    request_type: 'task_based',
+                    flagged_entities: detectedUrls
+                };
+
+                return {
+                    parsed_intent: parsedIntent,
+                    context_store: {
+                        entries: directEntries,
+                        research_depth: 'standard',
+                        total_searches_executed: detectedUrls.length,
+                        gaps: []
+                    },
+                    research_required: true,
+                    duration_ms: Date.now() - startTime
+                };
+            }
+
             // ── Phase 0: Intent Parsing (1 LLM call) ────────────────────
             const parsedIntent = await this.parseIntent(message);
             console.log(`[Researcher] Phase 0: type=${parsedIntent.request_type}, entities=[${parsedIntent.entities}], flagged=[${parsedIntent.flagged_entities}]`);
@@ -81,6 +145,7 @@ export class Researcher {
             };
         }
     }
+
 
     private static async parseIntent(message: NormalizedMessage): Promise<ParsedIntent> {
         const researcherConfig = await MemoryManager.getResearcherConfig(message.user_id);
