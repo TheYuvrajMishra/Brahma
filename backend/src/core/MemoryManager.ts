@@ -31,20 +31,29 @@ export class MemoryManager {
     }
 
     /**
-     * Copies default core brain templates to user dedicated core directory if it doesn't exist yet.
+     * Copies default core brain templates to user dedicated core directory and keeps system files in sync.
      */
     static ensureUserBrain(userId: string, targetPath?: string): void {
         const userBrainPath = targetPath || path.resolve(__dirname, '../../brahma [brain]/users', userId, 'core');
         if (!fs.existsSync(userBrainPath)) {
             fs.mkdirSync(userBrainPath, { recursive: true });
-            const templatePath = config.brainPath; // ./brahma [brain]/core
-            if (fs.existsSync(templatePath)) {
-                const files = fs.readdirSync(templatePath);
-                for (const file of files) {
-                    const srcFile = path.join(templatePath, file);
-                    const destFile = path.join(userBrainPath, file);
-                    if (fs.statSync(srcFile).isFile()) {
+        }
+        const templatePath = config.brainPath; // ./brahma [brain]/core
+        if (fs.existsSync(templatePath)) {
+            const files = fs.readdirSync(templatePath);
+            for (const file of files) {
+                const srcFile = path.join(templatePath, file);
+                const destFile = path.join(userBrainPath, file);
+                if (fs.statSync(srcFile).isFile()) {
+                    const isUserStateFile = ['zehn.md', 'moment.md'].includes(file.toLowerCase());
+                    if (!fs.existsSync(destFile)) {
                         fs.copyFileSync(srcFile, destFile);
+                    } else if (!isUserStateFile) {
+                        const srcStat = fs.statSync(srcFile);
+                        const destStat = fs.statSync(destFile);
+                        if (srcStat.mtimeMs > destStat.mtimeMs || srcStat.size !== destStat.size) {
+                            fs.copyFileSync(srcFile, destFile);
+                        }
                     }
                 }
             }
