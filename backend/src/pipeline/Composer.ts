@@ -26,6 +26,16 @@ export class Composer {
      * Phase 8: Final Synthesis
      */
     static async compose(message: NormalizedMessage, routeBucket: string, executionLog?: ExecutionResult[], researchResult?: ResearchResult, intent: string = 'other'): Promise<PipelineResponse> {
+        // Direct Return for YouTube Structured Outputs
+        const ytEntry = researchResult?.context_store?.entries?.find(e => e.entity_name.startsWith('YouTube Video'));
+        if (ytEntry && ytEntry.key_facts?.[0] && ytEntry.key_facts[0].length > 150) {
+            console.log('[Composer] Returning pre-synthesized YouTube structured content directly to user.');
+            return {
+                originalMessage: message,
+                content: SecurityGuard.appendSecurityFooter(ytEntry.key_facts[0])
+            };
+        }
+
         let soul = await MemoryManager.getSoul(message.user_id, message.channel_id);
         const moment = await MemoryManager.getMoment(message.user_id, message.channel_id);
         const rawZehn = await MemoryManager.getZehn(message.user_id);
@@ -42,21 +52,22 @@ export class Composer {
                     if (resp) {
                         return { originalMessage: message, content: SecurityGuard.appendSecurityFooter(resp) };
                     }
+                    return { originalMessage: message, content: SecurityGuard.appendSecurityFooter(ctx) };
                 }
                 
                 const directResp = await LLMService.chat(`You are Brahma. Personality:\n${soul}\n\n${MARKDOWN_HIERARCHY_PROMPT}\n\nGive your best answer.`, message.content);
-                responseContent = directResp || 'I understood that you wanted me to do a complex task, but I failed to generate a valid plan for it.';
+                responseContent = directResp || 'I understood that you wanted me to do a task, but I encountered an issue processing the request.';
                 return { originalMessage: message, content: SecurityGuard.appendSecurityFooter(responseContent) };
             }
 
             const safeLog = executionLog.map(log => ({
                 ...log,
-                output: log.output && log.output.length > 50000 ? log.output.substring(0, 50000) + '\n...[TRUNCATED]...' : log.output
+                output: log.output && log.output.length > 2500 ? log.output.substring(0, 2500) + '\n...[TRUNCATED]...' : log.output
             }));
             const logString = JSON.stringify(safeLog, null, 2);
             
             const researchCtx = this.formatResearchContext(researchResult);
-            const cappedCtx = researchCtx.length > 60000 ? researchCtx.substring(0, 60000) + '\n...[TRUNCATED]' : researchCtx;
+            const cappedCtx = researchCtx.length > 30000 ? researchCtx.substring(0, 30000) + '\n...[TRUNCATED]' : researchCtx;
             
             let systemPrompt = `
 You are Brahma. Here is your soul/personality:
@@ -85,7 +96,7 @@ Rules:
 `.trim();
 
             const finalResponse = await LLMService.chat(systemPrompt, message.content);
-            responseContent = finalResponse || 'Task execution completed successfully.';
+            responseContent = finalResponse || (cappedCtx ? cappedCtx : 'Task execution completed successfully.');
         } else if (routeBucket === 'greeting') {
             const systemPrompt = `
 You are Brahma, an intelligent AI assistant runtime.
@@ -106,6 +117,8 @@ The user greeted you. Respond with a warm, natural, helpful greeting matching yo
         } else {
             // Simple bucket
             const researchCtx = this.formatResearchContext(researchResult);
+            const cappedCtx = researchCtx.length > 30000 ? researchCtx.substring(0, 30000) + '\n...[TRUNCATED]' : researchCtx;
+
             const systemPrompt = `
 You are Brahma, an intelligent AI assistant runtime.
 Here is your soul/personality:
@@ -116,7 +129,7 @@ ${moment}
 
 ### Relevant Long-Term Facts (Zehn)
 ${zehn}
-${researchCtx ? `\n### Pre-Researched Web Context\n${researchCtx}` : ''}
+${cappedCtx ? `\n### Pre-Researched Web Context\n${cappedCtx}` : ''}
 
 ${MARKDOWN_HIERARCHY_PROMPT}
 
@@ -124,7 +137,7 @@ Answer the user directly and accurately. Use your personality, memory, and resea
 `.trim();
 
             const simpleResponse = await LLMService.chat(systemPrompt, message.content);
-            responseContent = simpleResponse || 'Understood.';
+            responseContent = simpleResponse || (cappedCtx ? cappedCtx : 'Understood.');
         }
 
         return {
