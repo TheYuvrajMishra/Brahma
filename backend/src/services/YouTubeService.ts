@@ -49,6 +49,105 @@ export class YouTubeService {
     }
 
     static async fetchTranscript(videoId: string, messageId?: string): Promise<{ items: YouTubeTranscriptItem[]; source: string }> {
+        // Attempt 0: Android InnerTube API (Fastest & Most Reliable across all servers & VPS)
+        try {
+            console.log(`[YouTubeService] Attempting Android InnerTube fetch for videoId: ${videoId}`);
+            this.emitTelemetry(messageId, {
+                stage: 'YouTube Transcript Extraction',
+                label: `Fetching transcript for YouTube video: ${videoId}`,
+                url: `https://www.youtube.com/watch?v=${videoId}`,
+                domain: 'youtube.com',
+                favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
+            });
+
+            const innerTubeResp = await axios.post('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+                context: {
+                    client: {
+                        clientName: 'ANDROID',
+                        clientVersion: '20.10.38',
+                        androidSdkVersion: 34,
+                        hl: 'en',
+                        gl: 'US'
+                    }
+                },
+                videoId: videoId
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)'
+                },
+                timeout: 8000
+            });
+
+            const captionTracks = innerTubeResp.data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+            if (Array.isArray(captionTracks) && captionTracks.length > 0) {
+                const track = captionTracks.find((t: any) => t.languageCode === 'en') || captionTracks[0];
+                if (track?.baseUrl) {
+                    const xmlResp = await axios.get(track.baseUrl, {
+                        headers: {
+                            'User-Agent': 'com.google.android.youtube/20.10.38 (Linux; U; Android 14)'
+                        },
+                        timeout: 8000
+                    });
+
+                    const xml = typeof xmlResp.data === 'string' ? xmlResp.data : JSON.stringify(xmlResp.data);
+                    const items: YouTubeTranscriptItem[] = [];
+
+                    // SRV3 format: <p t="ms" d="ms"><s>text</s></p>
+                    const srvMatches = [...xml.matchAll(/<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g)];
+                    for (const m of srvMatches) {
+                        const startMs = parseInt(m[1], 10);
+                        const durMs = parseInt(m[2], 10);
+                        const rawText = m[3]
+                            .replace(/<[^>]+>/g, '')
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#39;/g, "'")
+                            .replace(/&apos;/g, "'")
+                            .trim();
+                        if (rawText) {
+                            items.push({
+                                text: rawText,
+                                offset: Math.floor(startMs / 1000),
+                                duration: Math.floor(durMs / 1000)
+                            });
+                        }
+                    }
+
+                    // Classic XML format: <text start="s" dur="s">content</text>
+                    if (items.length === 0) {
+                        const classicMatches = [...xml.matchAll(/<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g)];
+                        for (const m of classicMatches) {
+                            const rawText = m[3]
+                                .replace(/&amp;/g, '&')
+                                .replace(/&lt;/g, '<')
+                                .replace(/&gt;/g, '>')
+                                .replace(/&quot;/g, '"')
+                                .replace(/&#39;/g, "'")
+                                .replace(/&apos;/g, "'")
+                                .trim();
+                            if (rawText) {
+                                items.push({
+                                    text: rawText,
+                                    offset: Math.floor(parseFloat(m[1]) || 0),
+                                    duration: Math.floor(parseFloat(m[2]) || 0)
+                                });
+                            }
+                        }
+                    }
+
+                    if (items.length > 0) {
+                        console.log(`[YouTubeService] Android InnerTube extracted ${items.length} items for ${videoId}`);
+                        return { items, source: 'Android InnerTube API' };
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.warn(`[YouTubeService] Android InnerTube fetch failed for ${videoId}: ${err?.message || err}. Trying youtube-transcript package fallback.`);
+        }
+
         // Attempt 1: 'youtube-transcript' npm package (default + lang fallbacks)
         try {
             console.log(`[YouTubeService] Attempting youtube-transcript fetch for videoId: ${videoId}`);
