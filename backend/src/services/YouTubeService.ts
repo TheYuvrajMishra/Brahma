@@ -48,8 +48,7 @@ export class YouTubeService {
         });
     }
 
-    static async fetchTranscript(videoIdInput: string, messageId?: string): Promise<{ items: YouTubeTranscriptItem[]; source: string }> {
-        const videoId = this.extractVideoId(videoIdInput) || videoIdInput;
+    static async fetchTranscript(videoId: string, messageId?: string): Promise<{ items: YouTubeTranscriptItem[]; source: string }> {
         // Attempt 0: Android InnerTube API (Fastest & Most Reliable across all servers & VPS)
         try {
             console.log(`[YouTubeService] Attempting Android InnerTube fetch for videoId: ${videoId}`);
