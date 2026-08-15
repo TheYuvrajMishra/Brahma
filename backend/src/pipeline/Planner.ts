@@ -30,6 +30,18 @@ export class Planner {
         const rawZehn = await MemoryManager.getZehn(message.user_id);
         const zehn = MemoryManager.getFilteredZehn(rawZehn, intent, message.content, moment);
 
+        // Direct URL / YouTube Context Check: If YouTube or direct link research is already complete and no explicit tool action is requested, skip planning.
+        const hasDirectUrlResearch = researchResult?.context_store?.entries?.some(e => 
+            e.entity_name.startsWith('YouTube Video') || e.what_it_is.includes('Direct Web Article')
+        );
+        const isToolActionIntent = ['email_request', 'spreadsheet_request', 'command_execution'].includes(intent) ||
+                                  /(send|mail|email|bhej|sheet|spreadsheet|excel|create file|delete)/i.test(message.content);
+
+        if (hasDirectUrlResearch && !isToolActionIntent) {
+            console.log('[Planner] Pre-extracted direct URL/YouTube context present. Bypassing tool planning for direct synthesis.');
+            return [];
+        }
+
         let researchContext = '';
         if (researchResult?.research_required && researchResult.context_store.entries.length > 0) {
             const summaries = researchResult.context_store.entries.map(e => {

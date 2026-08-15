@@ -4,6 +4,7 @@ import { JSDOM } from 'jsdom';
 import { Readability } from '@mozilla/readability';
 import { ISkill } from '../types/Skill';
 import { EventBus } from '../core/EventBus';
+import { YouTubeService } from '../services/YouTubeService';
 
 interface SearchResultItem {
     title: string;
@@ -18,10 +19,17 @@ export class WebSearch implements ISkill {
     description = 'Performs deep live web search, crawls top article links, extracts cleaned main text using RAG, and returns structured citation context.';
 
     async execute(params: any): Promise<string> {
-        const query = params.query || params.target;
+        const query = (params.query || params.target || '').trim();
         const messageId = params._message_id || params.message_id || params.messageId;
 
         if (!query) throw new Error("Missing query parameter for web_search");
+
+        // Direct URL Interception: If query is or contains a URL, use direct fetch instead of keyword search
+        const urlMatch = query.match(/https?:\/\/[^\s<>"'\(\)]+/i);
+        if (urlMatch) {
+            console.log(`[WebSearch] Query contains direct URL: ${urlMatch[0]}. Routing directly to fetchDirectUrl.`);
+            return this.fetchDirectUrl(urlMatch[0], query, messageId);
+        }
 
         console.log(`[WebSearch] Beginning search for: "${query}"`);
 
@@ -302,6 +310,14 @@ export class WebSearch implements ISkill {
     }
 
     async fetchDirectUrl(url: string, query: string, messageId?: string): Promise<string> {
+        // Intercept YouTube URLs
+        const ytVideoId = YouTubeService.extractVideoId(url);
+        if (ytVideoId) {
+            console.log(`[WebSearch] Direct URL is YouTube video ${ytVideoId}. Invoking YouTubeService transcript processing.`);
+            const entry = await YouTubeService.processYouTubeUrl(url, query, messageId);
+            return entry.key_facts?.[0] || `YouTube video transcript extracted for ${url}`;
+        }
+
         const domain = this.extractDomain(url);
         const favicon = this.getFaviconUrl(domain);
 
