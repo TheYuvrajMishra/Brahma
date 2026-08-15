@@ -181,7 +181,18 @@ export class WebSearch implements ISkill {
         // Fallback to Playwright Chromium search
         let browser;
         try {
-            browser = await chromium.launch({ headless: true });
+            browser = await chromium.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu'
+                ]
+            });
             const context = await browser.newContext({
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             });
@@ -251,7 +262,18 @@ export class WebSearch implements ISkill {
         // Playwright Chromium fallback for JS-rendered SPAs
         let browser;
         try {
-            browser = await chromium.launch({ headless: true });
+            browser = await chromium.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu'
+                ]
+            });
             const context = await browser.newContext({
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             });
@@ -314,8 +336,13 @@ export class WebSearch implements ISkill {
         const ytVideoId = YouTubeService.extractVideoId(url);
         if (ytVideoId) {
             console.log(`[WebSearch] Direct URL is YouTube video ${ytVideoId}. Invoking YouTubeService transcript processing.`);
-            const entry = await YouTubeService.processYouTubeUrl(url, query, messageId);
-            return entry.key_facts?.[0] || `YouTube video transcript extracted for ${url}`;
+            try {
+                const entry = await YouTubeService.processYouTubeUrl(url, query, messageId);
+                return entry.key_facts?.[0] || `YouTube video transcript extracted for ${url}`;
+            } catch (ytErr: any) {
+                console.warn(`[WebSearch] YouTube processing error for ${url}:`, ytErr);
+                return `YouTube Video (${url}): Automated transcript extraction encountered an issue: ${ytErr?.message || ytErr}`;
+            }
         }
 
         const domain = this.extractDomain(url);

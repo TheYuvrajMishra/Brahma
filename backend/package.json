@@ -20,7 +20,7 @@
     "tool:verify": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tools/verifyDiscord.ts",
     "tool:check": "ts-node --compiler-options \"{\\\"module\\\":\\\"commonjs\\\"}\" tools/checkDb.ts",
     "build": "tsc",
-    "start": "nodemon index.ts",
+    "start": "node dist/index.js",
     "dev": "nodemon index.ts"
   },
   "dependencies": {
@@ -44,6 +44,7 @@
     "playwright": "^1.60.0",
     "socket.io": "^4.8.3",
     "xlsx": "^0.18.5",
+    "youtube-captions-scraper": "^2.0.3",
     "youtube-transcript": "^1.3.1"
   },
   "devDependencies": {

@@ -48,28 +48,31 @@ export class YouTubeService {
     }
 
     static async fetchTranscript(videoId: string, messageId?: string): Promise<{ items: YouTubeTranscriptItem[]; source: string }> {
-        // Attempt 1: 'youtube-transcript' npm package
-        try {
-            console.log(`[YouTubeService] Attempting youtube-transcript fetch for videoId: ${videoId}`);
-            this.emitTelemetry(messageId, {
-                stage: 'YouTube Transcript Extraction',
-                label: `Fetching transcript for YouTube video: ${videoId}`,
-                url: `https://www.youtube.com/watch?v=${videoId}`,
-                domain: 'youtube.com',
-                favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
-            });
+        // Attempt 1: 'youtube-transcript' npm package with language fallbacks
+        const langOptions = [undefined, 'en', 'en-US', 'hi'];
+        for (const lang of langOptions) {
+            try {
+                console.log(`[YouTubeService] Attempting youtube-transcript fetch for videoId: ${videoId} (lang: ${lang || 'default'})`);
+                this.emitTelemetry(messageId, {
+                    stage: 'YouTube Transcript Extraction',
+                    label: `Fetching transcript for YouTube video: ${videoId} (${lang || 'default'})`,
+                    url: `https://www.youtube.com/watch?v=${videoId}`,
+                    domain: 'youtube.com',
+                    favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
+                });
 
-            const rawItems = await YoutubeTranscript.fetchTranscript(videoId);
-            if (rawItems && rawItems.length > 0) {
-                const items: YouTubeTranscriptItem[] = rawItems.map(item => ({
-                    text: item.text,
-                    offset: Math.floor((item.offset || 0) > 10000 ? item.offset / 1000 : (item.offset || 0)),
-                    duration: Math.floor((item.duration || 0) > 10000 ? item.duration / 1000 : (item.duration || 0))
-                }));
-                return { items, source: 'youtube-transcript package' };
+                const rawItems = lang ? await YoutubeTranscript.fetchTranscript(videoId, { lang }) : await YoutubeTranscript.fetchTranscript(videoId);
+                if (rawItems && rawItems.length > 0) {
+                    const items: YouTubeTranscriptItem[] = rawItems.map(item => ({
+                        text: item.text,
+                        offset: Math.floor((item.offset || 0) > 10000 ? item.offset / 1000 : (item.offset || 0)),
+                        duration: Math.floor((item.duration || 0) > 10000 ? item.duration / 1000 : (item.duration || 0))
+                    }));
+                    return { items, source: `youtube-transcript package (${lang || 'default'})` };
+                }
+            } catch (err: any) {
+                console.warn(`[YouTubeService] youtube-transcript package (lang: ${lang || 'default'}) failed for ${videoId}: ${err?.message || err}`);
             }
-        } catch (err: any) {
-            console.warn(`[YouTubeService] youtube-transcript package failed for ${videoId}: ${err?.message || err}. Trying Playwright fallback.`);
         }
 
         // Attempt 2: Playwright Chromium Headless Fallback
@@ -83,7 +86,18 @@ export class YouTubeService {
                 favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
             });
 
-            browser = await chromium.launch({ headless: true });
+            browser = await chromium.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu'
+                ]
+            });
             const context = await browser.newContext({
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 locale: 'en-US'
@@ -96,15 +110,15 @@ export class YouTubeService {
                 if (url.includes('/api/timedtext') || url.includes('/youtubei/v1/get_transcript')) {
                     try {
                         const body = await response.text();
-                        if (body && body.length > 100) {
+                        if (body && body.length > 50) {
                             capturedTimedText = body;
                         }
                     } catch {}
                 }
             });
 
-            await page.goto(`https://www.youtube.com/watch?v=${videoId}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
-            await page.waitForTimeout(2000);
+            await page.goto(`https://www.youtube.com/watch?v=${videoId}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            await page.waitForTimeout(2500);
 
             // Attempt to click 'Show transcript' button if present in description
             try {
@@ -145,6 +159,27 @@ export class YouTubeService {
             }
 
             if (capturedTimedText) {
+                try {
+                    const parsed = JSON.parse(capturedTimedText);
+                    const events = parsed?.events || parsed?.actions?.[0]?.updateEngagementPanelAction?.content?.transcriptRenderer?.content?.transcriptSearchPanelRenderer?.body?.transcriptSegmentListRenderer?.initialSegments;
+                    if (Array.isArray(events) && events.length > 0) {
+                        const items: YouTubeTranscriptItem[] = [];
+                        for (const ev of events) {
+                            const snippet = ev.segs ? ev.segs.map((s: any) => s.utf8).join('') : ev.snippet?.runs?.map((r: any) => r.text).join('');
+                            if (snippet && snippet.trim()) {
+                                items.push({
+                                    text: snippet.trim(),
+                                    offset: Math.floor((ev.tStartMs || ev.startMs || 0) / 1000),
+                                    duration: Math.floor((ev.dDurationMs || 2000) / 1000)
+                                });
+                            }
+                        }
+                        if (items.length > 0) {
+                            return { items, source: 'Playwright TimedText Network JSON fallback' };
+                        }
+                    }
+                } catch {}
+
                 const cleanText = (capturedTimedText as string).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
                 if (cleanText.length > 100) {
                     return {
@@ -174,8 +209,29 @@ export class YouTubeService {
 
         const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-        // Step 1: Fetch raw transcript items
-        const { items, source } = await this.fetchTranscript(videoId, messageId);
+        // Step 1: Fetch raw transcript items with fallback handling
+        let transcriptData: { items: YouTubeTranscriptItem[]; source: string };
+        try {
+            transcriptData = await this.fetchTranscript(videoId, messageId);
+        } catch (fetchErr: any) {
+            console.warn(`[YouTubeService] Transcript extraction failed for ${videoId}: ${fetchErr?.message || fetchErr}. Creating metadata context fallback.`);
+            
+            // Return structured fallback entry based on URL and user query
+            const fallbackSummary = `# 📺 YouTube Video Summary: ${videoUrl}\n\n*Note: Automated closed caption extraction was not available for this video (it may lack subtitles or restrict automated transcript APIs).* \n\n### Recommendation:\nPlease ensure closed captions are enabled on the YouTube video, or provide specific topic questions for this video link.`;
+            return {
+                entity_name: `YouTube Video ${videoId}`,
+                confidence: 'medium',
+                what_it_is: `YouTube video link (${videoUrl})`,
+                key_facts: [fallbackSummary],
+                sources: [videoUrl],
+                current_status: 'available',
+                relevant_to_goal: userQuery,
+                last_updated: new Date().toISOString(),
+                researched_at: Date.now()
+            };
+        }
+
+        const { items, source } = transcriptData;
 
         // Format timestamped transcript lines
         const timestampedLines = items.map(item => `${this.formatTimestamp(item.offset)} ${item.text}`);
