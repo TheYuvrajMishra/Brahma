@@ -324,7 +324,10 @@ ${content}
         // Step 2: Use Playwright (already installed in backend) to compile HTML to PDF
         let browser;
         try {
-            browser = await chromium.launch({ headless: true });
+            browser = await chromium.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            });
             const page = await browser.newPage();
             await page.setContent(fullHtml, { waitUntil: 'load' });
             const pdfBuffer = await page.pdf({

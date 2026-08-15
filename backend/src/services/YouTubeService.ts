@@ -1,5 +1,6 @@
 import { YoutubeTranscript } from 'youtube-transcript';
 import { chromium } from 'playwright';
+import axios from 'axios';
 import { LLMService } from './LLMService';
 import { EventBus } from '../core/EventBus';
 import { ContextEntry } from '../types/ResearchTypes';
@@ -48,7 +49,7 @@ export class YouTubeService {
     }
 
     static async fetchTranscript(videoId: string, messageId?: string): Promise<{ items: YouTubeTranscriptItem[]; source: string }> {
-        // Attempt 1: 'youtube-transcript' npm package
+        // Attempt 1: 'youtube-transcript' npm package (default + lang fallbacks)
         try {
             console.log(`[YouTubeService] Attempting youtube-transcript fetch for videoId: ${videoId}`);
             this.emitTelemetry(messageId, {
@@ -59,7 +60,19 @@ export class YouTubeService {
                 favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
             });
 
-            const rawItems = await YoutubeTranscript.fetchTranscript(videoId);
+            // Try default fetch
+            let rawItems = await YoutubeTranscript.fetchTranscript(videoId).catch(() => null);
+
+            // If null, retry with english language option
+            if (!rawItems || rawItems.length === 0) {
+                rawItems = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en' }).catch(() => null);
+            }
+
+            // If still null, try with full URL string
+            if (!rawItems || rawItems.length === 0) {
+                rawItems = await YoutubeTranscript.fetchTranscript(`https://www.youtube.com/watch?v=${videoId}`).catch(() => null);
+            }
+
             if (rawItems && rawItems.length > 0) {
                 const items: YouTubeTranscriptItem[] = rawItems.map(item => ({
                     text: item.text,
@@ -69,10 +82,88 @@ export class YouTubeService {
                 return { items, source: 'youtube-transcript package' };
             }
         } catch (err: any) {
-            console.warn(`[YouTubeService] youtube-transcript package failed for ${videoId}: ${err?.message || err}. Trying Playwright fallback.`);
+            console.warn(`[YouTubeService] youtube-transcript package failed for ${videoId}: ${err?.message || err}. Trying direct HTML captionTracks fallback.`);
         }
 
-        // Attempt 2: Playwright Chromium Headless Fallback
+        // Attempt 2: Direct Axios HTML captionTracks extraction
+        try {
+            console.log(`[YouTubeService] Attempting direct HTML captionTracks extraction for videoId: ${videoId}`);
+            const pageUrl = `https://www.youtube.com/watch?v=${videoId}`;
+            const resp = await axios.get(pageUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Cookie': 'SOCS=CAESEwgDEgk1ODE3OTQxMjAaAmVuIAEaBgiA_a-1Bg; CONSENT=YES+'
+                },
+                timeout: 8000
+            });
+
+            const html = resp.data;
+            const match = html.match(/"captionTracks":\s*(\[[^\]]+\])/);
+            if (match) {
+                const tracks = JSON.parse(match[1]);
+                if (Array.isArray(tracks) && tracks.length > 0 && tracks[0].baseUrl) {
+                    const xmlResp = await axios.get(tracks[0].baseUrl, { timeout: 8000 });
+                    const xml = typeof xmlResp.data === 'string' ? xmlResp.data : JSON.stringify(xmlResp.data);
+
+                    const items: YouTubeTranscriptItem[] = [];
+
+                    // Classic XML format: <text start="s" dur="s">content</text>
+                    const classicMatches = [...xml.matchAll(/<text start="([^"]*)" dur="([^"]*)">([^<]*)<\/text>/g)];
+                    for (const m of classicMatches) {
+                        const rawText = m[3]
+                            .replace(/&amp;/g, '&')
+                            .replace(/&lt;/g, '<')
+                            .replace(/&gt;/g, '>')
+                            .replace(/&quot;/g, '"')
+                            .replace(/&#39;/g, "'")
+                            .replace(/&apos;/g, "'")
+                            .trim();
+                        if (rawText) {
+                            items.push({
+                                text: rawText,
+                                offset: Math.floor(parseFloat(m[1]) || 0),
+                                duration: Math.floor(parseFloat(m[2]) || 0)
+                            });
+                        }
+                    }
+
+                    // SRV3 XML format: <p t="ms" d="ms"><s>text</s></p>
+                    if (items.length === 0) {
+                        const srvMatches = [...xml.matchAll(/<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g)];
+                        for (const m of srvMatches) {
+                            const startMs = parseInt(m[1], 10);
+                            const durMs = parseInt(m[2], 10);
+                            const rawText = m[3]
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/&amp;/g, '&')
+                                .replace(/&lt;/g, '<')
+                                .replace(/&gt;/g, '>')
+                                .replace(/&quot;/g, '"')
+                                .replace(/&#39;/g, "'")
+                                .replace(/&apos;/g, "'")
+                                .trim();
+                            if (rawText) {
+                                items.push({
+                                    text: rawText,
+                                    offset: Math.floor(startMs / 1000),
+                                    duration: Math.floor(durMs / 1000)
+                                });
+                            }
+                        }
+                    }
+
+                    if (items.length > 0) {
+                        console.log(`[YouTubeService] Direct HTML captionTracks extracted ${items.length} items for ${videoId}`);
+                        return { items, source: 'Direct Axios captionTracks fallback' };
+                    }
+                }
+            }
+        } catch (err: any) {
+            console.warn(`[YouTubeService] Direct HTML captionTracks failed for ${videoId}: ${err?.message || err}. Trying Playwright fallback.`);
+        }
+
+        // Attempt 3: Playwright Chromium Headless Fallback with Consent Bypass Cookies
         let browser;
         try {
             this.emitTelemetry(messageId, {
@@ -83,11 +174,21 @@ export class YouTubeService {
                 favicon: 'https://www.google.com/s2/favicons?domain=youtube.com'
             });
 
-            browser = await chromium.launch({ headless: true });
+            browser = await chromium.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            });
             const context = await browser.newContext({
                 userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 locale: 'en-US'
             });
+
+            // Set cookie consent bypass cookies
+            await context.addCookies([
+                { name: 'SOCS', value: 'CAESEwgDEgk1ODE3OTQxMjAaAmVuIAEaBgiA_a-1Bg', domain: '.youtube.com', path: '/' },
+                { name: 'CONSENT', value: 'YES+', domain: '.youtube.com', path: '/' }
+            ]);
+
             const page = await context.newPage();
 
             let capturedTimedText: string | null = null;
